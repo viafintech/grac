@@ -23,8 +23,8 @@ Grac was built for talking to JSON based REST APIs.
 Grac::Client.new("uri" => "http://localhost:12345/v1")
 
 # Defaults
-Grac::Client.new("
-  scheme"          => "https",
+Grac::Client.new({
+  "scheme"         => "https",
   "host"           => "localhost",
   "port"           => 80,
   "path"           => "/",
@@ -32,7 +32,7 @@ Grac::Client.new("
   "timeout"        => 15,
   "params"         => {},
   "headers"        => { "User-Agent" => "Grac v1.0.0" }
-)
+})
 ```
 
 ### Path traversing
