@@ -24,7 +24,8 @@ module Grac
         "connecttimeout" => options["connecttimeout"] || 0.1,
         "timeout"        => options["timeout"]        || 15,
         "params"         => options["params"]         || {},
-        "headers"        => { "User-Agent" => "Grac v#{Grac::VERSION}" }.merge(options["headers"] || {})
+        "headers"        => { "User-Agent" => "Grac v#{Grac::VERSION}" }.merge(options["headers"] || {}),
+        "postprocessing" => {}
       }
 
       @options["path"] = Addressable::URI.join("/", @options["path"]).path
@@ -130,6 +131,35 @@ module Grac
         JSON.parse(body)
       end
 
+      def postprocessing(data, processing = nil)
+        return data if @options["postprocessing"].nil? || @options["postprocessing"].empty?
+
+        if data.kind_of?(Hash)
+          data.each do |key, value|
+            processing = nil
+            @options["postprocessing"].each do |regex, action|
+              if /#{regex}/ =~ key
+                processing = action
+              end
+            end
+
+            if value.kind_of?(Hash) || value.kind_of?(Array)
+              data[key] = postprocessing(value, processing)
+            else
+              data[key] = postprocessing(value, processing)
+            end
+          end
+        elsif data.kind_of?(Array)
+          data.each_with_index do |value, index|
+            data[index] = postprocessing(value, processing)
+          end
+        else
+          data = processing.nil? ? data : processing.call(data)
+        end
+
+        return data
+      end
+
       def handle_response(request)
         response = request.run
 
@@ -148,7 +178,8 @@ module Grac
         case response.code
           when 200, 201
             begin
-              return parse_json(response.body)
+              result = parse_json(response.body)
+              return postprocessing(result)
             rescue JSON::ParserError
               return response.body
             end
