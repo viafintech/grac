@@ -31,7 +31,8 @@ Grac::Client.new({
   "connecttimeout" => 0.1,
   "timeout"        => 15,
   "params"         => {},
-  "headers"        => { "User-Agent" => "Grac v1.0.0" }
+  "headers"        => { "User-Agent" => "Grac v1.0.0" },
+  "postprocessing" => {}
 })
 ```
 
@@ -73,6 +74,25 @@ This is useful for reuse of a client instance which is already initialized to a 
 Calling methods with `!` at the end, e.g. `var!(value)` will result in overwriting the path of the
 current instance.
 
+### Data post processing
+Sometimes you may want to do some changes on the data for each entry before continuing
+By setting regex keys and lambda values in postprocessing this can be achieved.
+The regex will be matched against the hash keys in the response and if it matches, the lambda will be called
+
+```ruby
+client = Grac::Client.new("postprocessing" => { "amount$" => ->(value){ BigDecimal.new(value.to_s) } })
+
+# Response hash:
+# {
+#   "amount" => "123.12"
+#   "fee_amount" => "12.12"
+# }
+client.get
+# => {
+#      "amount"     => #<BigDecimal,'0.12312E3',18(18)>,
+#      "fee_amount" => #<BigDecimal,'0.1212E2',18(18)>
+#    }
+```
 
 ## Bugs and Contribution
 For bugs and feature requests open an issue on Github. For code contributions fork the repo, make your changes and create a pull request.
