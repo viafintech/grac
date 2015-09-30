@@ -52,7 +52,7 @@ client.var(1).uri
 
 # Any setting can be overwritten later on
 client.cookies!.uri
-"http://localhost:80/cookies"
+# => "http://localhost:80/cookies"
 
 client.set("path" => "abc").uri
 # => "http://localhost:80/abc"
