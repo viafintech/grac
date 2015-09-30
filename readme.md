@@ -31,7 +31,7 @@ Grac::Client.new("
   "connecttimeout" => 0.1,
   "timeout"        => 15,
   "params"         => {},
-  "headers"        => { "User-Agent" => Grac v1.0.0 }
+  "headers"        => { "User-Agent" => "Grac v1.0.0" }
 )
 ```
 
