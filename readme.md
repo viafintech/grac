@@ -19,60 +19,41 @@ Grac was built for talking to JSON based REST APIs.
 
 ### Initializing
 ```ruby
-# Keys have to be strings, no support for symbols
-Grac::Client.new("uri" => "http://localhost:12345/v1")
+Grac::Client.new("http://localhost:12345/v1")
 
 # Defaults
-Grac::Client.new({
-  "scheme"         => "https",
-  "host"           => "localhost",
-  "port"           => 80,
-  "path"           => "/",
-  "connecttimeout" => 0.1,
-  "timeout"        => 15,
-  "params"         => {},
-  "headers"        => { "User-Agent" => "Grac v1.0.0" },
-  "postprocessing" => {}
-})
+{
+  :connecttimeout => 0.1,
+  :timeout        => 15,
+  :params         => {},
+  :headers        => { "User-Agent" => "Grac v1.0.1" },
+  :postprocessing => {}
+}
 ```
 
 ### Path traversing
 ```ruby
-client = Grac::Client.new
+client = Grac::Client.new("localhost:80")
 
 client.uri
-# => "http://localhost:80/"
+# => "localhost:80"
 
-# Any valid Ruby method name that is not defined to append to the uri can be used
-client.something.uri
+client = Grac::Client.new("http://localhost:80")
+# use the path method to append to the uri
+client.path('/something').uri
 # => "http://localhost:80/something"
 
-# For non-valid Ruby method names which should be appended var can be used, e.g. numbers
-client.var(1).uri
-# => "http://localhost:80/1"
+# variables can be added dynamically - not that this only refers to the currently added path!
+client.path('/v{version}/something_else', :version => 2).uri
+# => "http://localhost:80/v2/something_else"
 
 # Any setting can be overwritten later on
-client.cookies!.uri
-# => "http://localhost:80/cookies"
-
-client.set("path" => "abc").uri
-# => "http://localhost:80/abc"
-
-# Templates can be used following the same logic as in the [Addressable](https://github.com/sporkmonger/addressable) gem
-client.set!("path" => "/{version}/{one,two,three}/{id}")
-
-client.expand("version" => "v1").uri
-# => "http://localhost:80/v1//"
-
-client.partial_expand("one" => "1", "three" => 3).uri
-# => "http://localhost:80/{v1}/1{two}3/{id}"
+client.set(:timeout => 5)
 ```
 
 Note:
-Calling the methods without `!` at the end will result in initializing a new instance of the client.
-This is useful for reuse of a client instance which is already initialized to a specific path.
-Calling methods with `!` at the end, e.g. `var!(value)` will result in overwriting the path of the
-current instance.
+Calling path will result in initializing a new instance of the the client.
+The same applies when calling set: a new instance will be created and the old object remains unchanged.
 
 ### Data post processing
 Sometimes you may want to do some changes on the data for each entry before continuing
@@ -80,7 +61,7 @@ By setting regex keys and lambda values in postprocessing this can be achieved.
 The regex will be matched against the hash keys in the response and if it matches, the lambda will be called
 
 ```ruby
-client = Grac::Client.new("postprocessing" => { "amount$" => ->(value){ BigDecimal.new(value.to_s) } })
+client = Grac::Client.new(:postprocessing => { "amount$" => ->(value){ BigDecimal.new(value.to_s) } })
 
 # Response hash:
 # {
@@ -93,6 +74,10 @@ client.get
 #      "fee_amount" => #<BigDecimal,'0.1212E2',18(18)>
 #    }
 ```
+
+Note:
+Postprocessing recursively runs through all of the data.
+This may have significant influence on performance depending on the size and depth of the result.
 
 ## Bugs and Contribution
 For bugs and feature requests open an issue on Github. For code contributions fork the repo, make your changes and create a pull request.

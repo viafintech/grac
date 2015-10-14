@@ -3,11 +3,12 @@ require 'json'
 module Grac
   module Exception
     class ClientException < StandardError
-      attr_reader :http_code, :service_response, :object, :error, :message, :errors
+      attr_reader :http_code, :service_response, :object, :error, :message, :errors, :url
 
       def initialize(response)
         @http_code = response.code
         @service_response = parse_json(response.body)
+        @url     = response.request.url
         @object  = @service_response["object"].to_sym if @service_response["object"]
         @error   = @service_response["error"].to_sym  if @service_response["error"]
         @message = @service_response["message"]

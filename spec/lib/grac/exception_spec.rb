@@ -11,9 +11,11 @@ describe Grac::Exception::ClientException do
         "title" => [{ "error" => "too_long", "count" => 30 }],
         "url"   => [{ "error" => "too_long", "count" => 90 },
                     { "error" => "invalid",  "value" => "asd" }]
-      }
+      },
     }
+    @request = double('request', 'url' => 'http://localhost')
     @response = Typhoeus::Response.new(code: 400, body: @body.to_json)
+    allow(@response).to receive(:request).and_return(@request)
   end
 
   it "creates an exception object from a JSON response" do
@@ -24,11 +26,13 @@ describe Grac::Exception::ClientException do
     expect(exception.error).to eq(:invalid)
     expect(exception.message).to eq("resource invalid")
     expect(exception.errors).to eq(@body["errors"])
+    expect(exception.url).to eq("http://localhost")
   end
 
   it "works if the error response contains no 'errors' param" do
     @body.delete("errors")
     response = Typhoeus::Response.new(code: 400, body: @body.to_json)
+    allow(response).to receive(:request).and_return(@request)
     expect(described_class.new(response).errors).to eq({})
   end
 
@@ -48,6 +52,7 @@ describe Grac::Exception::ClientException do
     it "returns the class name if the error response does not contain a message" do
       @body.delete("message")
       response = Typhoeus::Response.new(code: 400, body: @body.to_json)
+      allow(response).to receive(:request).and_return(@request)
       expect(described_class.new(response).to_s).to eq("Grac::Exception::ClientException")
     end
   end

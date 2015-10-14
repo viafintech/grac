@@ -3,7 +3,7 @@ require 'spec_helper'
 require 'bigdecimal'
 
 describe Grac::Client do
-  let(:grac) { described_class.new }
+  let(:grac) { described_class.new("http://localhost:80") }
 
   def check_options(client, field, value)
     expect(client.instance_variable_get("@options")[field]).to eq(value)
@@ -11,213 +11,52 @@ describe Grac::Client do
 
   context "#initialize" do
     it "initializes the client with default values" do
-      client = described_class.new
+      client = described_class.new("http://localhost:80")
       expect(client.instance_variable_get("@options")).to eq({
-        "scheme"         => "http",
-        "host"           => "localhost",
-        "port"           => 80,
-        "path"           => "/",
-        "connecttimeout" => 0.1,
-        "timeout"        => 15,
-        "params"         => {},
-        "headers"        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
-        "postprocessing" => {}
+        :connecttimeout => 0.1,
+        :timeout        => 15,
+        :params         => {},
+        :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
+        :postprocessing => {}
       })
-    end
-
-    it "allows setting scheme, host, port and path with the uri setting" do
-      client = described_class.new("uri" => "https://host:1234/path")
-      expect(client.instance_variable_get("@options")).to eq({
-        "scheme"         => "https",
-        "host"           => "host",
-        "port"           => 1234,
-        "path"           => "/path",
-        "connecttimeout" => 0.1,
-        "timeout"        => 15,
-        "params"         => {},
-        "headers"        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
-        "postprocessing" => {}
-      })
-    end
-
-    it "allows setting scheme, host, port and path individually" do
-      client = described_class.new(
-        "scheme" => "https",
-        "host"   => "example.com",
-        "port"   => 5678,
-        "path"   => "blub"
-      )
-      expect(client.instance_variable_get("@options")).to eq({
-        "scheme"         => "https",
-        "host"           => "example.com",
-        "port"           => 5678,
-        "path"           => "/blub",
-        "connecttimeout" => 0.1,
-        "timeout"        => 15,
-        "params"         => {},
-        "headers"        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
-        "postprocessing" => {}
-      })
+      expect(client.uri).to eq("http://localhost:80")
     end
 
     {
-      "connecttimeout" => 0.4,
-      "timeout"        => 10,
-      "params"         => { "abc" => "def" },
-      "headers"        => { "User-Agent" => "Test" }
+      :connecttimeout => 0.4,
+      :timeout        => 10,
+      :params         => { "abc" => "def" },
+      :headers        => { "User-Agent" => "Test" },
+      :postprocessing => { "amount" => ->(value){ BigDecimal.new(value.to_s) } }
     }.each do |param, value|
       it "allows setting the #{param}" do
-        client = described_class.new(param => value)
+        client = described_class.new("http://localhost:80", param => value)
         check_options(client, param, value)
       end
     end
 
     it "keeps the user_agent header if it is not overwritten" do
-      client = described_class.new("headers" => { "Request-Id" => "123234234" })
-      check_options(client, "headers",
+      client = described_class.new("http://localhost", :headers => { "Request-Id" => "123234234" })
+      check_options(client, :headers,
         { "User-Agent" => "Grac v#{Grac::VERSION}", "Request-Id" => "123234234" })
     end
   end
 
   context "#set" do
     it "sets options and creates a new client instance" do
-      new_client = grac.set({ "host" => "example.com" })
+      new_client = grac.set({ :timeout => 30 })
       expect(new_client).to_not eq(grac)
-      check_options(grac,       "host", "localhost")
-      check_options(new_client, "host", "example.com")
+      check_options(grac,       :timeout, 15)
+      check_options(new_client, :timeout, 30)
     end
   end
 
-  context "#set!" do
-    it "sets options on the existing instance" do
-      client = grac.set!({ "host" => "example.com" })
-      expect(client).to eq(grac)
-      check_options(grac,   "host", "example.com")
-      check_options(client, "host", "example.com")
-    end
-  end
-
-  context "#method_missing" do
-    it "appends to the path and create a new client instance" do
-      check_options(grac, "path", "/")
-      client = grac.v1
+  context "#path" do
+    it "appends to the uri and create a new client instance" do
+      expect(grac.uri).to eq("http://localhost:80")
+      client = grac.path("/v2/transactions")
       expect(client).to_not eq(grac)
-      check_options(grac,   "path", "/")
-      check_options(client, "path", "/v1")
-    end
-
-    it "appends to the path and sets it on the current instance" do
-      check_options(grac, "path", "/")
-      client = grac.v1!
-      expect(client).to eq(grac)
-      check_options(grac,   "path", "/v1")
-      check_options(client, "path", "/v1")
-    end
-  end
-
-  context "#respond_to_missing?" do
-    it "returns a method for an unknown method" do
-      expect(grac.methods.include?(:v1)).to eq(false)
-      expect(grac.private_methods.include?(:v1)).to eq(false)
-      expect(grac.method(:v1).name).to eq(:v1)
-      expect(grac.respond_to?(:v1)).to eq(true)
-      expect(grac.respond_to?(:v1, true)).to eq(true)
-    end
-
-    it "returns a method for a private method" do
-      expect(grac.methods.include?(:build_request)).to eq(false)
-      expect(grac.private_methods.include?(:build_request)).to eq(true)
-      expect(grac.method(:build_request).name).to eq(:build_request)
-      expect(grac.respond_to?(:build_request)).to eq(false)
-      expect(grac.respond_to?(:build_request, true)).to eq(true)
-    end
-
-    it "returns a method for a public method" do
-      expect(grac.methods.include?(:uri)).to eq(true)
-      expect(grac.private_methods.include?(:uri)).to eq(false)
-      expect(grac.method(:uri).name).to eq(:uri)
-      expect(grac.respond_to?(:uri)).to eq(true)
-      expect(grac.respond_to?(:uri, true)).to eq(true)
-    end
-  end
-
-  context "#var" do
-    it "appends to the path and create a new client instance" do
-      check_options(grac, "path", "/")
-      client = grac.var(1)
-      expect(client).to_not eq(grac)
-      check_options(grac,   "path", "/")
-      check_options(client, "path", "/1")
-    end
-  end
-
-  context "#var!" do
-    it "appends to the path and sets it on the current instance" do
-      check_options(grac, "path", "/")
-      client = grac.var!(1)
-      expect(client).to eq(grac)
-      check_options(grac,   "path", "/1")
-      check_options(client, "path", "/1")
-    end
-  end
-
-  context "#type" do
-    it "appends to the path and create a new client instance" do
-      check_options(grac, "path", "/")
-      client = grac.var(1).type("pdf")
-      expect(client).to_not eq(grac)
-      check_options(grac,   "path", "/")
-      check_options(client, "path", "/1.pdf")
-    end
-  end
-
-  context "#type!" do
-    it "appends to the path and sets it on the current instance" do
-      check_options(grac, "path", "/")
-      client = grac.var!(1).type!("pdf")
-      expect(client).to eq(grac)
-      check_options(grac,   "path", "/1.pdf")
-      check_options(client, "path", "/1.pdf")
-    end
-  end
-
-  context "#expand" do
-    it "replaces the template parts in the path and creates a new client instance" do
-      grac.set!("path" => "/var/{template}/{another_template}")
-      client = grac.expand("template" => "abc")
-      expect(client).to_not eq(grac)
-      check_options(grac,   "path", "/var/{template}/{another_template}")
-      check_options(client, "path", "/var/abc/")
-    end
-  end
-
-  context "#expand!" do
-    it "replaces the template parts in the path and sets the path on the current instance" do
-      grac.set!("path" => "/var/{template}/{another_template}")
-      client = grac.expand!("template" => "abc")
-      expect(client).to eq(grac)
-      check_options(grac,   "path", "/var/abc/")
-      check_options(client, "path", "/var/abc/")
-    end
-  end
-
-  context "#partial_expand" do
-    it "replaces the template parts in the path and creates a new client instance" do
-      grac.set!("path" => "/var/{template}/{another_template}")
-      client = grac.partial_expand("template" => "abc")
-      expect(client).to_not eq(grac)
-      check_options(grac,   "path", "/var/{template}/{another_template}")
-      check_options(client, "path", "/var/abc/{another_template}")
-    end
-  end
-
-  context "#partial_expand!" do
-    it "replaces the template parts in the path and sets the path on the current instance" do
-      grac.set!("path" => "/var/{template}/{another_template}")
-      client = grac.partial_expand!("template" => "abc")
-      expect(client).to eq(grac)
-      check_options(grac,   "path", "/var/abc/{another_template}")
-      check_options(client, "path", "/var/abc/{another_template}")
+      expect(client.uri).to eq("http://localhost:80/v2/transactions")
     end
   end
 
@@ -226,9 +65,9 @@ describe Grac::Client do
       context "##{method}" do
         it "calls build request with body and params" do
           expect(grac).to receive(:build_request)
-                      .with(method, { "body" => {}, "params" => {} })
+                      .with(method, { :body => {}, :params => {} })
                       .and_return(double = Object.new)
-          expect(grac).to receive(:handle_response).with(double).and_return(true)
+          expect(grac).to receive(:run).with(double).and_return(true)
           expect(grac.send(method)).to eq(true)
         end
       end
@@ -238,9 +77,9 @@ describe Grac::Client do
       context "##{method}" do
         it "calls build request with params" do
           expect(grac).to receive(:build_request)
-                      .with(method, {  "params" => {} })
+                      .with(method, {  :params => {} })
                       .and_return(double = Object.new)
-          expect(grac).to receive(:handle_response).with(double).and_return(true)
+          expect(grac).to receive(:run).with(double).and_return(true)
           expect(grac.send(method)).to eq(true)
         end
       end
@@ -256,8 +95,8 @@ describe Grac::Client do
 
     it "automatically converts a field" do
       data = { "amount" => "123.12", "something_else" => "value" }
-      grac.set!("postprocessing" => { 'amount$' => ->(value){ BigDecimal.new(value) } })
-      expect(grac.send(:postprocessing, data)).to eq({
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      expect(client.send(:postprocessing, data)).to eq({
         "amount"         => BigDecimal.new("123.12"),
         "something_else" => "value"
       })
@@ -265,8 +104,8 @@ describe Grac::Client do
 
     it "automatically converts a value in a nested hash field" do
       data = { "nested" => { "amount" => "123.12" }, "something_else" => "value" }
-      grac.set!("postprocessing" => { 'amount$' => ->(value){ BigDecimal.new(value) } })
-      expect(grac.send(:postprocessing, data)).to eq({
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      expect(client.send(:postprocessing, data)).to eq({
         "nested" => {
           "amount" => BigDecimal.new("123.12"),
         },
@@ -276,8 +115,8 @@ describe Grac::Client do
 
     it "automatically converts a value in a nested array field" do
       data = { "nested" => [{ "amount" => "123.12" }], "something_else" => "value" }
-      grac.set!("postprocessing" => { 'amount$' => ->(value){ BigDecimal.new(value) } })
-      expect(grac.send(:postprocessing, data)).to eq({
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      expect(client.send(:postprocessing, data)).to eq({
         "nested" => [{
           "amount" => BigDecimal.new("123.12"),
         }],
@@ -287,8 +126,8 @@ describe Grac::Client do
 
     it "automatically converts field values if all of them are in an array" do
       data = { "amount" => ["123.12", "154.23"], "something_else" => "value" }
-      grac.set!("postprocessing" => { 'amount$' => ->(value){ BigDecimal.new(value) } })
-      expect(grac.send(:postprocessing, data)).to eq({
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      expect(client.send(:postprocessing, data)).to eq({
         "amount" => [BigDecimal.new("123.12"), BigDecimal.new("154.23")],
         "something_else" => "value"
       })
@@ -296,8 +135,8 @@ describe Grac::Client do
 
     it "does not convert if the value of key is a nested hash" do
       data = { "amount" => { "nested" => "123.12" }, "something_else" => "value" }
-      grac.set!("postprocessing" => { 'amount$' => ->(value){ BigDecimal.new(value) } })
-      expect(grac.send(:postprocessing, data)).to eq({
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      expect(client.send(:postprocessing, data)).to eq({
         "amount" => {
           "nested" => "123.12",
         },
@@ -309,7 +148,7 @@ describe Grac::Client do
   context "#build_request" do
     it "sets certain values on Typhoeus" do
       expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80/", {
+                               .with("http://localhost:80", {
                                   :method  => "get",
                                   :params  => {},
                                   :body    => nil,
@@ -322,7 +161,7 @@ describe Grac::Client do
 
     it "sets a json body" do
       expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80/", {
+                               .with("http://localhost:80", {
                                   :method  => "post",
                                   :params  => {},
                                   :body    => { "abc" => "def" }.to_json,
@@ -330,12 +169,12 @@ describe Grac::Client do
                                   :timeout => 15,
                                   :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
                                 })
-      grac.send(:build_request, "post", { "body" => { "abc" => "def" } })
+      grac.send(:build_request, "post", { :body => { "abc" => "def" } })
     end
 
     it "sets params" do
       expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80/", {
+                               .with("http://localhost:80", {
                                   :method  => "post",
                                   :params  => { "abc" => "def" },
                                   :body    => nil,
@@ -343,13 +182,13 @@ describe Grac::Client do
                                   :timeout => 15,
                                   :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
                                 })
-      grac.send(:build_request, "post", { "params" => { "abc" => "def" } })
+      grac.send(:build_request, "post", { :params => { "abc" => "def" } })
     end
 
     it "merges with predefined params" do
-      grac.set!("params" => { "example" => "blub" })
+      client = grac.set(:params => { "example" => "blub" })
       expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80/", {
+                               .with("http://localhost:80", {
                                   :method  => "post",
                                   :params  => { "example" => "blub", "abc" => "def" },
                                   :body    => nil,
@@ -357,14 +196,16 @@ describe Grac::Client do
                                   :timeout => 15,
                                   :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
                                 })
-      grac.send(:build_request, "post", { "params" => { "abc" => "def" } })
+      client.send(:build_request, "post", { :params => { "abc" => "def" } })
     end
   end
 
-  context "#handle_response" do
-    let(:request) { double('request', 'options' => { "method" => "get" }) }
+  context "#run" do
+    let(:request) { double('request', 'options' => { "method" => "get" },
+                           'url' => grac.uri) }
     let(:response) { double('response', 'timed_out?' => false, 'code' => 200,
-                            'body' => { "value" => "success" }.to_json) }
+                            'body' => { "value" => "success" }.to_json,
+                            'headers' => { 'Content-Type' => 'application/json?encoding=utf-8' }) }
 
     before do
       expect(request).to receive(:run).and_return(response)
@@ -372,40 +213,38 @@ describe Grac::Client do
 
     context "retry" do
       it "retries for get" do
-        expect(request).to receive(:run).and_return(response)
         expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "retries for head" do
         expect(request).to receive(:options).and_return({ "method" => "head" })
-        expect(request).to receive(:run).and_return(response)
         expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for post" do
         expect(request).to receive(:options).and_return({ "method" => "post" })
         expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for put" do
         expect(request).to receive(:options).and_return({ "method" => "put" })
         expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for patch" do
         expect(request).to receive(:options).and_return({ "method" => "patch" })
         expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for delete" do
         expect(request).to receive(:options).and_return({ "method" => "delete" })
         expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "raises a ServiceTimeout if the response timed out" do
@@ -413,19 +252,22 @@ describe Grac::Client do
         expect(response).to receive(:timed_out?).twice.and_return(true)
         allow(response).to receive(:return_message).and_return("timeout")
         expect{
-          grac.send(:handle_response, request)
-        }.to raise_exception(Grac::Exception::ServiceTimeout, "Service timed out: timeout")
+          grac.send(:run, request)
+        }.to raise_exception(
+          Grac::Exception::ServiceTimeout,
+          "Request to '#{grac.uri}' timed out: timeout"
+        )
       end
     end
 
     context "response code 200" do
       it "returns a parsed json body" do
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
-      it "returns the body as is if it is not valid json" do
-        allow(response).to receive(:body).and_return("cookies")
-        expect(grac.send(:handle_response, request)).to eq("cookies")
+      it "returns the body as is if the content type is not json" do
+        allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
+        expect(grac.send(:run, request)).to eq("{\"value\":\"success\"}")
       end
     end
 
@@ -435,12 +277,12 @@ describe Grac::Client do
       end
 
       it "returns a parsed json body" do
-        expect(grac.send(:handle_response, request)).to eq({ "value" => "success" })
+        expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
-      it "returns the body as is if it is not valid json" do
-        allow(response).to receive(:body).and_return("cookies")
-        expect(grac.send(:handle_response, request)).to eq("cookies")
+      it "returns the body as is if the content type is not json" do
+        allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
+        expect(grac.send(:run, request)).to eq("{\"value\":\"success\"}")
       end
     end
 
@@ -450,7 +292,7 @@ describe Grac::Client do
       end
 
       it "returns true" do
-        expect(grac.send(:handle_response, request)).to eq(true)
+        expect(grac.send(:run, request)).to eq(true)
       end
     end
 
@@ -462,52 +304,57 @@ describe Grac::Client do
 
       it "raises a RequestFailed exception" do
         expect{
-          grac.send(:handle_response, request)
-        }.to raise_exception(Grac::Exception::RequestFailed, "Service request failed: timeout")
+          grac.send(:run, request)
+        }.to raise_exception(Grac::Exception::RequestFailed, "Request to '#{grac.uri}' failed: timeout")
       end
     end
 
     context "response code 400" do
       it "raises a Invalid exception" do
+        allow(response).to receive(:request).and_return(request)
         allow(response).to receive(:code).and_return(400)
         expect{
-          grac.send(:handle_response, request)
+          grac.send(:run, request)
         }.to raise_exception(Grac::Exception::Invalid)
       end
     end
 
     context "response code 403" do
       it "raises a Forbidden exception" do
+        allow(response).to receive(:request).and_return(request)
         allow(response).to receive(:code).and_return(403)
         expect{
-          grac.send(:handle_response, request)
+          grac.send(:run, request)
         }.to raise_exception(Grac::Exception::Forbidden)
       end
     end
 
     context "response code 404" do
       it "raises a NotFound exception" do
+        allow(response).to receive(:request).and_return(request)
         allow(response).to receive(:code).and_return(404)
         expect{
-          grac.send(:handle_response, request)
+          grac.send(:run, request)
         }.to raise_exception(Grac::Exception::NotFound)
       end
     end
 
     context "response code 409" do
       it "raises a Conflict exception" do
+        allow(response).to receive(:request).and_return(request)
         allow(response).to receive(:code).and_return(409)
         expect{
-          grac.send(:handle_response, request)
+          grac.send(:run, request)
         }.to raise_exception(Grac::Exception::Conflict)
       end
     end
 
     context "other response code e.g. 500" do
       it "raises a ServiceError exception" do
+        allow(response).to receive(:request).and_return(request)
         allow(response).to receive(:code).and_return(500)
         expect{
-          grac.send(:handle_response, request)
+          grac.send(:run, request)
         }.to raise_exception(Grac::Exception::ServiceError)
       end
     end

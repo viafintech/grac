@@ -25,6 +25,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec_junit_formatter",   "~> 0.2.2"
   spec.add_development_dependency "rack-test",               "~> 0.6.3"
 
-  spec.add_runtime_dependency "addressable",                 "~> 2.3.8"
   spec.add_runtime_dependency "typhoeus",                    "~> 0.6.9"
 end
