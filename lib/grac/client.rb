@@ -22,6 +22,10 @@ module Grac
     end
 
     def set(options = {})
+      options = options.merge({
+        headers: @options[:headers].merge(options[:headers] || {})
+      })
+
       self.class.new(@uri, @options.merge(options))
     end
 

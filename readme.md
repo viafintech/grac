@@ -26,7 +26,7 @@ Grac::Client.new("http://localhost:12345/v1")
   :connecttimeout => 0.1,
   :timeout        => 15,
   :params         => {},
-  :headers        => { "User-Agent" => "Grac v1.0.1" },
+  :headers        => { "User-Agent" => "Grac v2.0.0" },
   :postprocessing => {}
 }
 ```

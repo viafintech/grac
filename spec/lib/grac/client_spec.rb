@@ -49,6 +49,14 @@ describe Grac::Client do
       check_options(grac,       :timeout, 15)
       check_options(new_client, :timeout, 30)
     end
+
+    it "merges headers instead of overwriting them" do
+      a_client = grac.set({ :headers => { "User-Agent" => "123445" } })
+      b_client = a_client.set({ :headers => { "Request-Id" => "123445" } })
+      check_options(b_client, :headers, {
+        "User-Agent" => "123445", "Request-Id" => "123445"
+      })
+    end
   end
 
   context "#path" do
