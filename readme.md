@@ -41,11 +41,11 @@ client.uri
 client = Grac::Client.new("http://localhost:80")
 # use the path method to append to the uri
 client.path('/something').uri
-# => "http://localhost:80/something"
+# => "localhost:80/something"
 
 # variables can be added dynamically - not that this only refers to the currently added path!
 client.path('/v{version}/something_else', :version => 2).uri
-# => "http://localhost:80/v2/something_else"
+# => "localhost:80/v2/something_else"
 
 # Any setting can be overwritten later on
 client.set(:timeout => 5)
@@ -61,7 +61,12 @@ By setting regex keys and lambda values in postprocessing this can be achieved.
 The regex will be matched against the hash keys in the response and if it matches, the lambda will be called
 
 ```ruby
-client = Grac::Client.new(:postprocessing => { "amount$" => ->(value){ BigDecimal.new(value.to_s) } })
+client = Grac::Client.new(
+  "http://localhost:80",
+  :postprocessing => {
+    "amount$" => ->(value){ BigDecimal.new(value.to_s) }
+  }
+)
 
 # Response hash:
 # {

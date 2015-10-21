@@ -218,44 +218,45 @@ describe Grac::Client do
       end
 
       it "retries for head" do
-        expect(request).to receive(:options).and_return({ "method" => "head" })
+        expect(request).to receive(:run).and_return(response)
+        expect(request).to receive(:options).and_return({ :method => "head" })
         expect(response).to receive(:timed_out?).and_return(true, false)
         expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for post" do
-        expect(request).to receive(:options).and_return({ "method" => "post" })
+        expect(request).to receive(:options).and_return({ :method => "post" })
         expect(response).to receive(:timed_out?).and_return(true, false)
         expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for put" do
-        expect(request).to receive(:options).and_return({ "method" => "put" })
+        expect(request).to receive(:options).and_return({ :method => "put" })
         expect(response).to receive(:timed_out?).and_return(true, false)
         expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for patch" do
-        expect(request).to receive(:options).and_return({ "method" => "patch" })
+        expect(request).to receive(:options).and_return({ :method => "patch" })
         expect(response).to receive(:timed_out?).and_return(true, false)
         expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "does not retry for delete" do
-        expect(request).to receive(:options).and_return({ "method" => "delete" })
+        expect(request).to receive(:options).and_return({ :method => "delete" })
         expect(response).to receive(:timed_out?).and_return(true, false)
         expect(grac.send(:run, request)).to eq({ "value" => "success" })
       end
 
       it "raises a ServiceTimeout if the response timed out" do
-        expect(request).to receive(:options).and_return({ "method" => "put" })
+        expect(request).to receive(:options).and_return({ :method => "put" })
         expect(response).to receive(:timed_out?).twice.and_return(true)
         allow(response).to receive(:return_message).and_return("timeout")
         expect{
           grac.send(:run, request)
         }.to raise_exception(
           Grac::Exception::ServiceTimeout,
-          "Request to '#{grac.uri}' timed out: timeout"
+          "PUT '#{grac.uri}' timed out: timeout"
         )
       end
     end
@@ -303,9 +304,10 @@ describe Grac::Client do
       end
 
       it "raises a RequestFailed exception" do
+        expect(request).to receive(:options).and_return({ :method => "get" })
         expect{
           grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::RequestFailed, "Request to '#{grac.uri}' failed: timeout")
+        }.to raise_exception(Grac::Exception::RequestFailed, "GET '#{grac.uri}' failed: timeout")
       end
     end
 
@@ -315,7 +317,7 @@ describe Grac::Client do
         allow(response).to receive(:code).and_return(400)
         expect{
           grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::Invalid)
+        }.to raise_exception(Grac::Exception::BadRequest)
       end
     end
 

@@ -76,11 +76,7 @@ module Grac
               end
             end
 
-            if value.kind_of?(Hash) || value.kind_of?(Array)
-              data[key] = postprocessing(value, processing)
-            else
-              data[key] = postprocessing(value, processing)
-            end
+            data[key] = postprocessing(value, processing)
           end
         elsif data.kind_of?(Array)
           data.each_with_index do |value, index|
@@ -104,8 +100,7 @@ module Grac
         # success although data hasn't been fully transferred. Thus rely on Typhoeus for
         # detecting a timeout.
         if response.timed_out?
-          raise Exception::ServiceTimeout.new(
-            "Request to '#{request.url}' timed out: #{response.return_message}")
+          raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
         end
 
         case response.code
@@ -120,18 +115,17 @@ module Grac
           when 204
             return true
           when 0
-            raise Exception::RequestFailed.new(
-              "Request to '#{request.url}' failed: #{response.return_message}")
+            raise Exception::RequestFailed.new(method, request.url, response.return_message)
           when 400
-            raise Exception::Invalid.new(response)
+            raise Exception::BadRequest.new(method, request.url, response.body)
           when 403
-            raise Exception::Forbidden.new(response)
+            raise Exception::Forbidden.new(method, request.url, response.body)
           when 404
-            raise Exception::NotFound.new(response)
+            raise Exception::NotFound.new(method, request.url, response.body)
           when 409
-            raise Exception::Conflict.new(response)
+            raise Exception::Conflict.new(method, request.url, response.body)
           else
-            raise Exception::ServiceError.new(response)
+            raise Exception::ServiceError.new(method, request.url, response.body)
         end
       end
   end
