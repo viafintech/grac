@@ -33,19 +33,19 @@ Grac::Client.new("http://localhost:12345/v1")
 
 ### Path traversing
 ```ruby
-client = Grac::Client.new("localhost:80")
+client = Grac::Client.new("http://localhost:80")
 
 client.uri
-# => "localhost:80"
+# => "http://localhost:80"
 
 client = Grac::Client.new("http://localhost:80")
 # use the path method to append to the uri
 client.path('/something').uri
-# => "localhost:80/something"
+# => "http://localhost:80/something"
 
 # variables can be added dynamically - not that this only refers to the currently added path!
 client.path('/v{version}/something_else', :version => 2).uri
-# => "localhost:80/v2/something_else"
+# => "http://localhost:80/v2/something_else"
 
 # Any setting can be overwritten later on
 client.set(:timeout => 5)
