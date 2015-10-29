@@ -8,7 +8,7 @@ module Grac
       def initialize(method, url, body)
         @method    = (method || "").upcase
         @url       = url
-        @body      = parse_json(body)
+        @body      = body
       end
 
       def inspect
@@ -16,16 +16,10 @@ module Grac
       end
 
       def message
-        "#{@method} '#{@url}' failed: #{@body}"
+        "#{@method} '#{@url}' failed with content: #{@body}"
       end
 
       alias_method :to_s, :message
-
-      private
-
-        def parse_json(body)
-          JSON.parse(body)
-        end
     end
 
     class BadRequest   < ClientException; end
@@ -58,6 +52,23 @@ module Grac
       def message
          "#{@method} '#{@url}' timed out: #{@message}"
       end
+    end
+
+    class InvalidContent < StandardError
+      def initialize(body, type)
+        @body = body
+        @type = type
+      end
+
+      def message
+        "Failed to process '#{@body}' as type '#{@type}'"
+      end
+
+      def inspect
+        "#{self.class.name}: #{message}"
+      end
+
+      alias_method :to_s, :message
     end
   end
 end

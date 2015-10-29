@@ -3,9 +3,12 @@ require 'typhoeus'
 require 'uri'
 
 require_relative './exception'
+require_relative './response_processing'
 
 module Grac
   class Client
+    include ::Grac::ResponseProcessing
+
     attr_reader :uri
 
     def initialize(uri, options = {})
@@ -64,10 +67,6 @@ module Grac
         return ::Typhoeus::Request.new(uri, request_hash)
       end
 
-      def parse_json(body)
-        JSON.parse(body)
-      end
-
       def postprocessing(data, processing = nil)
         return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
@@ -107,29 +106,44 @@ module Grac
           raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
         end
 
+        content_type = response.headers["Content-Type"]
         case response.code
           when 200, 201
-            content_type = response.headers["Content-Type"]
-            if content_type.match("application/json")
-              result = parse_json(response.body)
-              return postprocessing(result)
-            else
-              return response.body
-            end
+            return process_response(response.body, content_type)
           when 204
             return true
           when 0
             raise Exception::RequestFailed.new(method, request.url, response.return_message)
           when 400
-            raise Exception::BadRequest.new(method, request.url, response.body)
+            raise Exception::BadRequest.new(
+              method,
+              request.url,
+              process_response(response.body, content_type)
+            )
           when 403
-            raise Exception::Forbidden.new(method, request.url, response.body)
+            raise Exception::Forbidden.new(
+              method,
+              request.url,
+              process_response(response.body, content_type)
+            )
           when 404
-            raise Exception::NotFound.new(method, request.url, response.body)
+            raise Exception::NotFound.new(
+              method,
+              request.url,
+              process_response(response.body, content_type)
+            )
           when 409
-            raise Exception::Conflict.new(method, request.url, response.body)
+            raise Exception::Conflict.new(
+              method,
+              request.url,
+              process_response(response.body, content_type)
+            )
           else
-            raise Exception::ServiceError.new(method, request.url, response.body)
+            raise Exception::ServiceError.new(
+              method,
+              request.url,
+              process_response(response.body, content_type)
+            )
         end
       end
   end

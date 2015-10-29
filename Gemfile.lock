@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    grac (2.0.0)
+    grac (2.0.0.issue.pre.2)
       typhoeus (~> 0.6.9)
 
 GEM
