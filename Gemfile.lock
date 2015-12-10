@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    grac (2.0.0.issue.pre.2)
+    grac (2.0.1)
       typhoeus (~> 0.6.9)
 
 GEM
@@ -45,3 +45,6 @@ DEPENDENCIES
   rake (~> 10.4.1)
   rspec (~> 3.2.0)
   rspec_junit_formatter (~> 0.2.2)
+
+BUNDLED WITH
+   1.10.6
