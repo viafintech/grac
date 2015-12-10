@@ -1,9 +1,8 @@
-# encoding: UTF-8
 require 'spec_helper'
 
 describe Grac::Exception::ClientException do
-  before(:each) do
-    @body = {
+  let(:body) {
+    {
       "object" => "resource",
       "error" => "invalid",
       "message" => "resource invalid",
@@ -13,41 +12,40 @@ describe Grac::Exception::ClientException do
                     { "error" => "invalid",  "value" => "asd" }]
       },
     }
-  end
+  }
+  let(:request_method) { 'GET' }
+  let(:exception)      { described_class.new(request_method, 'http://localhost', body) }
 
   it "creates an exception object from a JSON response" do
-    exception = described_class.new('GET', 'http://localhost', @body.to_json)
-    expect(exception.body).to eq(@body)
-    expect(exception.message).to eq("GET 'http://localhost' failed: #{@body}")
+    expect(exception.body).to eq(body)
+    expect(exception.message).to eq("GET 'http://localhost' failed with content: #{body}")
     expect(exception.url).to eq("http://localhost")
   end
 
-  it "does not fail if method is nil" do
-    exception = described_class.new(nil, 'http://localhost', @body.to_json)
-    expect(exception.message).to eq(" 'http://localhost' failed: #{@body}")
+  context 'with nil method' do
+    let(:request_method) { nil }
+
+    it "does not fail" do
+      expect(exception.message).to eq(" 'http://localhost' failed with content: #{body}")
+    end
   end
 
   context '#inspect' do
     it "returns a certain string" do
-      exception = described_class.new('GET', 'http://localhost', @body.to_json)
-      str = "Grac::Exception::ClientException: GET 'http://localhost' failed: #{@body}"
+      str = "Grac::Exception::ClientException: GET 'http://localhost' failed with content: #{body}"
       expect(exception.inspect).to eq(str)
     end
   end
 
   context '#message' do
     it "returns the message" do
-      expect(
-        described_class.new('GET', 'http://localhost', @body.to_json).message
-      ).to eq("GET 'http://localhost' failed: #{@body}")
+      expect(exception.message).to eq("GET 'http://localhost' failed with content: #{body}")
     end
   end
 
   context '#to_s' do
     it "aliases message" do
-      expect(
-        described_class.new('GET', 'http://localhost', @body.to_json).to_s
-      ).to eq("GET 'http://localhost' failed: #{@body}")
+      expect(exception.to_s).to eq("GET 'http://localhost' failed with content: #{body}")
     end
   end
 
@@ -72,6 +70,16 @@ describe Grac::Exception::ClientException do
     it "has a custom message" do
       exception = Grac::Exception::ServiceTimeout.new('put', 'http://example.com', 'something<>')
       expect(exception.message).to eq("PUT 'http://example.com' timed out: something<>")
+    end
+  end
+
+  context "InvalidContent" do
+    it "has a custom message" do
+      exception = Grac::Exception::InvalidContent.new('any body', 'json')
+      expect(exception.message).to eq("Failed to parse body as 'json': 'any body'")
+      expect(exception.inspect).to eq(
+        "Grac::Exception::InvalidContent: Failed to parse body as 'json': 'any body'"
+      )
     end
   end
 end

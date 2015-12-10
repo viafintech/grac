@@ -1,4 +1,3 @@
-# encoding: UTF-8
 require 'spec_helper'
 require 'bigdecimal'
 
@@ -212,8 +211,9 @@ describe Grac::Client do
     let(:request) { double('request', 'options' => { "method" => "get" },
                            'url' => grac.uri) }
     let(:response) { double('response', 'timed_out?' => false, 'code' => 200,
-                            'body' => { "value" => "success" }.to_json,
+                            'body' => response_body,
                             'headers' => { 'Content-Type' => 'application/json?encoding=utf-8' }) }
+    let(:response_body) { { "value" => "success" }.to_json }
 
     before do
       expect(request).to receive(:run).and_return(response)
@@ -278,6 +278,25 @@ describe Grac::Client do
         allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
         expect(grac.send(:run, request)).to eq("{\"value\":\"success\"}")
       end
+
+      context "with invalid JSON" do
+        let(:response_body) { "INVALID JSON" }
+
+        it 'raises an InvalidContent exception' do
+          expect {
+            grac.send(:run, request)
+          }.to raise_exception(Grac::Exception::InvalidContent,
+                               "Failed to parse body as 'json': '#{response_body}'")
+        end
+      end
+
+      context "with postprocessing" do
+        let(:grac) { super().set(:postprocessing => { '.*' => ->(v){ 'CHANGED' } })}
+
+        it "runs the postprocessing" do
+          expect(grac.send(:run, request)).to eq({ "value" => "CHANGED" })
+        end
+      end
     end
 
     context "response code 201" do
@@ -320,12 +339,42 @@ describe Grac::Client do
     end
 
     context "response code 400" do
-      it "raises a Invalid exception" do
+      before do
         allow(response).to receive(:request).and_return(request)
         allow(response).to receive(:code).and_return(400)
+        expect(request).to receive(:options).and_return({ method: "post" })
+      end
+
+      it "raises a BadRequest exception" do
         expect{
           grac.send(:run, request)
         }.to raise_exception(Grac::Exception::BadRequest)
+      end
+
+      context "with json content type but invalid json" do
+        let(:response_body) { "INVALID JSON" }
+
+        it "raises a BadRequest exception with the raw body" do
+          expect{
+            grac.send(:run, request)
+          }.to raise_exception(Grac::Exception::BadRequest,
+            "POST '#{grac.uri}' failed with content: INVALID JSON")
+        end
+      end
+
+      context "with non-json content type" do
+        let(:response_body) { "SOME PLAIN ERROR" }
+
+        before do
+          allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
+        end
+
+        it "raises a BadRequest exception with the raw body" do
+          expect{
+            grac.send(:run, request)
+          }.to raise_exception(Grac::Exception::BadRequest,
+            "POST '#{grac.uri}' failed with content: SOME PLAIN ERROR")
+        end
       end
     end
 

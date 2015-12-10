@@ -3,6 +3,7 @@ require 'typhoeus'
 require 'uri'
 
 require_relative './exception'
+require_relative './response'
 
 module Grac
   class Client
@@ -64,10 +65,6 @@ module Grac
         return ::Typhoeus::Request.new(uri, request_hash)
       end
 
-      def parse_json(body)
-        JSON.parse(body)
-      end
-
       def postprocessing(data, processing = nil)
         return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
@@ -107,29 +104,28 @@ module Grac
           raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
         end
 
+        grac_response = Response.new(response)
         case response.code
           when 200, 201
-            content_type = response.headers["Content-Type"]
-            if content_type.match("application/json")
-              result = parse_json(response.body)
-              return postprocessing(result)
-            else
-              return response.body
+            if grac_response.json_content?
+              return postprocessing(grac_response.parsed_json)
             end
+
+            return grac_response.body
           when 204
             return true
           when 0
             raise Exception::RequestFailed.new(method, request.url, response.return_message)
           when 400
-            raise Exception::BadRequest.new(method, request.url, response.body)
+            raise Exception::BadRequest.new(method, request.url, grac_response.parsed_or_raw_body)
           when 403
-            raise Exception::Forbidden.new(method, request.url, response.body)
+            raise Exception::Forbidden.new(method, request.url, grac_response.parsed_or_raw_body)
           when 404
-            raise Exception::NotFound.new(method, request.url, response.body)
+            raise Exception::NotFound.new(method, request.url, grac_response.parsed_or_raw_body)
           when 409
-            raise Exception::Conflict.new(method, request.url, response.body)
+            raise Exception::Conflict.new(method, request.url, grac_response.parsed_or_raw_body)
           else
-            raise Exception::ServiceError.new(method, request.url, response.body)
+            raise Exception::ServiceError.new(method, request.url, grac_response.parsed_or_raw_body)
         end
       end
   end
