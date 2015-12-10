@@ -61,7 +61,7 @@ module Grac
       end
 
       def message
-        "Failed to process '#{@body}' as type '#{@type}'"
+        "Failed to parse body as '#{@type}': '#{@body}'"
       end
 
       def inspect
