@@ -31,7 +31,7 @@ module Grac
 
       begin
         parsed_json
-      rescue Exception::InvalidContent => e
+      rescue Exception::InvalidContent
         body
       end
     end
