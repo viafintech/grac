@@ -99,7 +99,7 @@ This results in a request to `/v1/users?page=2`.
 #### Available request methods
 
 * `get(query_params)`
-* `head(query_params)`
+* `delete(query_params)`
 * `post(request_body, query_params)`
 * `put(request_body, query_params)`
 * `patch(request_body, query_params)`
