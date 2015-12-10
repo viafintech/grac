@@ -104,6 +104,23 @@ This results in a request to `/v1/users?page=2`.
 * `put(request_body, query_params)`
 * `patch(request_body, query_params)`
 
+#### Responses
+
+For the **success** status codes `200` and `201`, Grac tries to parse the response as JSON if the response Content-Type contains `application/json`. For other content types, Grac returns the response as String and doesn't attempt to parse it. For a `204` response, the return value is undefined (it's currently `true`, but this might change in the future).
+
+When a **failure** occurs, one of these exceptions will be raised:
+
+* Status 400: `Grac::Exception::BadRequest`
+* Status 403: `Grac::Exception::Forbidden`
+* Status 404: `Grac::Exception::NotFound`
+* Status 409: `Grac::Exception::Conflict`
+* All other status codes: `ServiceError` - this includes all unknown status codes, even 2xx and 3xx codes. See [issue #4](https://github.com/Barzahlen/grac/issues/4) for ideas on improving this.
+* `InvalidContent` - JSON Parsing failed, server response indicates success
+* `RequestFailed` - The request failed, there's no response from the server.
+    * `ServiceTimeout` - A subclass of `RequestFailed` - the request failed due to a timeout (like waiting for the connection or for the response).
+
+See [issue #1](https://github.com/Barzahlen/grac/issues/1) for support for more status codes.
+
 ### Chaining
 
 Grac allows you to override options and append to the URI by chaining calls to `set` resp. `path`.
