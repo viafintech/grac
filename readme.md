@@ -47,7 +47,7 @@ client.path('/github.com').get
 2. Require the Gem at any point before using it
 3. Use it!
 
-## Examples
+## Usage
 
 ### Initializing
 

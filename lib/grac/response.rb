@@ -1,4 +1,5 @@
 require 'json'
+require 'forwardable'
 
 require_relative './exception'
 
