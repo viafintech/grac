@@ -299,9 +299,9 @@ describe Grac::Client do
       end
     end
 
-    context "response code 201" do
+    context "unknown response code 299" do
       before do
-        allow(response).to receive(:code).and_return(201)
+        allow(response).to receive(:code).and_return(299)
       end
 
       it "returns a parsed json body" do

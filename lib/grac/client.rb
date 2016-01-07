@@ -106,13 +106,14 @@ module Grac
 
         grac_response = Response.new(response)
         case response.code
-          when 200, 201
+          when 200..203, 206..299
+            # unknown status codes must be treated as the x00 of their class, so 200
             if grac_response.json_content?
               return postprocessing(grac_response.parsed_json)
             end
 
             return grac_response.body
-          when 204
+          when 204, 205
             return true
           when 0
             raise Exception::RequestFailed.new(method, request.url, response.return_message)
