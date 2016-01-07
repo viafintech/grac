@@ -106,7 +106,7 @@ This results in a request to `/v1/users?page=2`.
 
 #### Responses
 
-For the **success** status codes `200` and `201`, Grac tries to parse the response as JSON if the response Content-Type contains `application/json`. For other content types, Grac returns the response as String and doesn't attempt to parse it. For a `204` response, the return value is undefined (it's currently `true`, but this might change in the future).
+For most **success** status codes (`2xx`, except `204` and `205`), Grac tries to parse the response as JSON if the response Content-Type contains `application/json`. For other content types, Grac returns the response as String and doesn't attempt to parse it. For a `204` or `205` response, the return value is undefined (it's currently `true`, but this might change in the future).
 
 When a **failure** occurs, one of these exceptions will be raised:
 
@@ -114,7 +114,7 @@ When a **failure** occurs, one of these exceptions will be raised:
 * Status 403: `Grac::Exception::Forbidden`
 * Status 404: `Grac::Exception::NotFound`
 * Status 409: `Grac::Exception::Conflict`
-* All other status codes: `ServiceError` - this includes all unknown status codes, even 2xx and 3xx codes. See [issue #4](https://github.com/Barzahlen/grac/issues/4) for ideas on improving this.
+* All other status codes: `ServiceError` - this includes all unknown status codes, even 3xx codes. See [issue #4](https://github.com/Barzahlen/grac/issues/4) for ideas on improving this.
 * `InvalidContent` - JSON Parsing failed, server response indicates success
 * `RequestFailed` - The request failed, there's no response from the server.
     * `ServiceTimeout` - A subclass of `RequestFailed` - the request failed due to a timeout (like waiting for the connection or for the response).
@@ -186,6 +186,11 @@ Into this Ruby Hash:
 **Note:**
 Postprocessing recursively runs through all of the data.
 This may have significant influence on performance depending on size and depth of the result.
+
+## Limitations
+
+* 3xx status codes (i.e. redirects) are not yet supported.
+* Not all error response codes have proper exceptions, see [issue #4](https://github.com/Barzahlen/grac/issues/4).
 
 ## Bugs and Contribution
 For bugs and feature requests open an issue on Github. For code contributions fork the repo, make your changes and create a pull request.
