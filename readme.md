@@ -169,7 +169,7 @@ mw = lambda do |opts, request_uri, method, params, body|
   return opts, request_uri, method, params, body
 end
 
-Grac::Client.new("http://localhost:80", middlewares: [mw])
+Grac::Client.new("http://localhost:80", middleware: [mw])
 ```
 
 Multiple middlewares can be added and they are executed in the order they were added.

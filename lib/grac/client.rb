@@ -19,10 +19,10 @@ module Grac
         :params         => options[:params]         || {},
         :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" }.merge(options[:headers] || {}),
         :postprocessing => options[:postprocessing] || {},
-        :middlewares    => options[:middlewares]    || []
+        :middleware     => options[:middleware]    || []
       }
       @options.freeze
-      [:params, :headers, :postprocessing, :middlewares].each do |k|
+      [:params, :headers, :postprocessing, :middleware].each do |k|
         @options[k].freeze
       end
       @uri.freeze
@@ -30,8 +30,8 @@ module Grac
 
     def set(options = {})
       options = options.merge({
-        headers:     @options[:headers].merge(options[:headers]      || {}),
-        middlewares: @options[:middlewares] + (options[:middlewares] || [])
+        headers:    @options[:headers].merge(options[:headers]      || {}),
+        middleware: @options[:middleware] + (options[:middleware] || [])
       })
 
       self.class.new(@uri, @options.merge(options))
@@ -66,7 +66,7 @@ module Grac
         opts        = @options
         request_uri = uri
 
-        @options[:middlewares].each do |mw|
+        @options[:middleware].each do |mw|
           opts, request_uri, method, params, body = mw.call(opts, request_uri, method, params, body)
         end
 

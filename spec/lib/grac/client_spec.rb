@@ -17,7 +17,7 @@ describe Grac::Client do
         :params         => {},
         :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
         :postprocessing => {},
-        :middlewares    => []
+        :middleware    => []
       })
       expect(client.uri).to eq("http://localhost:80")
     end
@@ -58,10 +58,10 @@ describe Grac::Client do
       })
     end
 
-    it "merges middlewares instead of overwriting them" do
-      a_client = grac.set({ :middlewares => ["abc"] })
-      b_client = a_client.set({ :middlewares => ["cde"] })
-      check_options(b_client, :middlewares, ["abc", "cde"])
+    it "merges middleware instead of overwriting them" do
+      a_client = grac.set({ :middleware => ["abc"] })
+      b_client = a_client.set({ :middleware => ["cde"] })
+      check_options(b_client, :middleware, ["abc", "cde"])
     end
   end
 
@@ -214,7 +214,7 @@ describe Grac::Client do
     end
 
     it "executes middleware" do
-      client = grac.set(:middlewares => [->(opts, uri, method, params, body) {
+      client = grac.set(:middleware => [->(opts, uri, method, params, body) {
         uri    = "#{uri}1"
         method = method.upcase
         params = params.merge("a" => "b")
@@ -236,7 +236,7 @@ describe Grac::Client do
     end
 
     it "raises an exception if a middleware tries to directly change opts" do
-      client = grac.set(:middlewares => [->(opts, uri, method, params, body) {
+      client = grac.set(:middleware => [->(opts, uri, method, params, body) {
         opts[:timemout] = 12
 
         return opts, uri, method, params, body
@@ -247,7 +247,7 @@ describe Grac::Client do
     end
 
     it "raises an exception if a middleware tries to directly change url" do
-      client = grac.set(:middlewares => [->(opts, uri, method, params, body) {
+      client = grac.set(:middleware => [->(opts, uri, method, params, body) {
         uri[2] = "k"
 
         return opts, uri, method, params, body
