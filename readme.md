@@ -161,7 +161,11 @@ For this purpose `Proc`s/`lambda`s can be set on the Grac object following the e
 ```ruby
 mw = lambda do |opts, request_uri, method, params, body|
   # your code here
-
+  # opts        - Hash of the options currently set on the grac object
+  # request_uri - uri returned by grac
+  # method      - http method (lower case)
+  # params      - hash of all params for this request
+  # body        - serialized body
   return opts, request_uri, method, params, body
 end
 
