@@ -18,13 +18,20 @@ module Grac
         :timeout        => options[:timeout]        || 15,
         :params         => options[:params]         || {},
         :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" }.merge(options[:headers] || {}),
-        :postprocessing => options[:postprocessing] || {}
+        :postprocessing => options[:postprocessing] || {},
+        :middleware     => options[:middleware]    || []
       }
+      @options.freeze
+      [:params, :headers, :postprocessing, :middleware].each do |k|
+        @options[k].freeze
+      end
+      @uri.freeze
     end
 
     def set(options = {})
       options = options.merge({
-        headers: @options[:headers].merge(options[:headers] || {})
+        headers:    @options[:headers].merge(options[:headers]      || {}),
+        middleware: @options[:middleware] + (options[:middleware] || [])
       })
 
       self.class.new(@uri, @options.merge(options))
@@ -53,16 +60,24 @@ module Grac
 
     private
       def build_request(method, options = {})
-        body = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
+        body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
+        params = @options[:params].merge(options[:params] || {})
+
+        opts        = @options
+        request_uri = uri
+
+        @options[:middleware].each do |mw|
+          opts, request_uri, method, params, body = mw.call(opts, request_uri, method, params, body)
+        end
 
         request_hash = { :method => method }
-        request_hash[:params]         = @options[:params].merge(options[:params] || {})
+        request_hash[:params]         = params
         request_hash[:body]           = body
-        request_hash[:connecttimeout] = @options[:connecttimeout]
-        request_hash[:timeout]        = @options[:timeout]
-        request_hash[:headers]        = @options[:headers]
+        request_hash[:connecttimeout] = opts[:connecttimeout]
+        request_hash[:timeout]        = opts[:timeout]
+        request_hash[:headers]        = opts[:headers]
 
-        return ::Typhoeus::Request.new(uri, request_hash)
+        return ::Typhoeus::Request.new(request_uri, request_hash)
       end
 
       def postprocessing(data, processing = nil)
