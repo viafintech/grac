@@ -152,7 +152,7 @@ Grac::Client.new("http://freegeoip.net/json").path("/github.com").uri
 ### Middleware
 
 Sometimes it may be necessary to programmatically set a specific value on the request.
-An example would be an `Authorization` header whose value depends on e.g. host, path, http method, etc.
+An example would be an `Authorization` header with a signature depending on host, path, http method, etc.
 While this could be calculated before making the request it is just convenient to have it done
 automatically with each request.
 
@@ -173,8 +173,7 @@ Grac::Client.new("http://localhost:80", middlewares: [mw])
 ```
 
 Multiple middlewares can be added and they are executed in the order they were added.
-In order to support this it is necessary to return the same parameters which were given so that any
-changes made to them can be used in the next middleware.
+The middlware can't modify the original parameters it receives (they're frozen), but it can return new values (or some of the original ones if it only needs to modify some of the parameters). The return values are then passed to the next middleware or, if the middleware is the last one, used for the actual request.
 
 ### Response post processing
 
