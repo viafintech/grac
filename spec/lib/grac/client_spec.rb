@@ -16,7 +16,8 @@ describe Grac::Client do
         :timeout        => 15,
         :params         => {},
         :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
-        :postprocessing => {}
+        :postprocessing => {},
+        :middlewares    => []
       })
       expect(client.uri).to eq("http://localhost:80")
     end
@@ -55,6 +56,12 @@ describe Grac::Client do
       check_options(b_client, :headers, {
         "User-Agent" => "123445", "Request-Id" => "123445"
       })
+    end
+
+    it "merges middlewares instead of overwriting them" do
+      a_client = grac.set({ :middlewares => ["abc"] })
+      b_client = a_client.set({ :middlewares => ["cde"] })
+      check_options(b_client, :middlewares, ["abc", "cde"])
     end
   end
 
@@ -204,6 +211,50 @@ describe Grac::Client do
                                   :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
                                 })
       client.send(:build_request, "post", { :params => { "abc" => "def" } })
+    end
+
+    it "executes middleware" do
+      client = grac.set(:middlewares => [->(opts, uri, method, params, body) {
+        uri    = "#{uri}1"
+        method = method.upcase
+        params = params.merge("a" => "b")
+        body   = "abc"
+        opts   = opts.merge(:headers => { "Auth" => "value" })
+
+        return opts, uri, method, params, body
+      }])
+      expect(Typhoeus::Request).to receive(:new)
+                               .with("http://localhost:801", {
+                                  :method  => "POST",
+                                  :params  => { "abc" => "def", "a" => "b" },
+                                  :body    => "abc",
+                                  :connecttimeout => 0.1,
+                                  :timeout => 15,
+                                  :headers => { "Auth" => "value" }
+                                })
+      client.send(:build_request, "post", { :params => { "abc" => "def" } })
+    end
+
+    it "raises an exception if a middleware tries to directly change opts" do
+      client = grac.set(:middlewares => [->(opts, uri, method, params, body) {
+        opts[:timemout] = 12
+
+        return opts, uri, method, params, body
+      }])
+      expect{
+        client.send(:build_request, "post", { :params => { "abc" => "def" } })
+      }.to raise_exception(RuntimeError, "can't modify frozen Hash")
+    end
+
+    it "raises an exception if a middleware tries to directly change url" do
+      client = grac.set(:middlewares => [->(opts, uri, method, params, body) {
+        uri[2] = "k"
+
+        return opts, uri, method, params, body
+      }])
+      expect{
+        client.send(:build_request, "post", { :params => { "abc" => "def" } })
+      }.to raise_exception(RuntimeError, "can't modify frozen String")
     end
   end
 

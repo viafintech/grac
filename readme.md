@@ -64,8 +64,9 @@ Available options (shown are the default values):
   connecttimeout: 0.1,  # in seconds
   timeout:        15,   # in seconds
   params:         {},   # default query parameters to be attached to the URL
-  headers:        { "User-Agent" => "Grac v2.0.0" },
-  postprocessing: {}    # see below
+  headers:        { "User-Agent" => "Grac v2.X.X" },
+  postprocessing: {},   # see below
+  middleware:     []    # see below
 }
 ```
 
@@ -147,6 +148,29 @@ You can access a client's full URI (without query parameters):
 Grac::Client.new("http://freegeoip.net/json").path("/github.com").uri
  => "http://freegeoip.net/json/github.com"
 ```
+
+### Middleware
+
+Sometimes it may be necessary to programmatically set a specific value on the request.
+An example would be an `Authorization` header whose value depends on e.g. host, path, http method, etc.
+While this could be calculated before making the request it is just convenient to have it done
+automatically with each request.
+
+For this purpose `Proc`s/`lambda`s can be set on the Grac object following the example below:
+
+```ruby
+mw = lambda do |opts, request_uri, method, params, body|
+  # your code here
+
+  return opts, request_uri, method, params, body
+end
+
+Grac::Client.new("http://localhost:80", middlewares: [mw])
+```
+
+Multiple middlewares can be added and they are executed in the order they were added.
+In order to support this it is necessary to return the same parameters which were given so that any
+changes made to them can be used in the next middleware.
 
 ### Response post processing
 
