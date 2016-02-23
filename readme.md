@@ -159,21 +159,26 @@ automatically with each request.
 For this purpose `Proc`s/`lambda`s can be set on the Grac object following the example below:
 
 ```ruby
-mw = lambda do |opts, request_uri, method, params, body|
+mw = lambda do |opts, request_uri, method, params, body, &block|
   # your code here
   # opts        - Hash of the options currently set on the grac object
   # request_uri - uri returned by grac
   # method      - http method (lower case)
   # params      - hash of all params for this request
   # body        - serialized body
-  return opts, request_uri, method, params, body
+  result = block.call(opts, request_uri, method, params, body)
+  # your code for working on the response here
+  return result
 end
 
 Grac::Client.new("http://localhost:80", middleware: [mw])
 ```
 
-Multiple middlewares can be added and they are executed in the order they were added.
+Multiple middlewares can be added and they are wrapped in the order they were added, the first one
+being the first one which is called and the last one to return in the middleware stack.
 The middlware can't modify the original parameters it receives (they're frozen), but it can return new values (or some of the original ones if it only needs to modify some of the parameters). The return values are then passed to the next middleware or, if the middleware is the last one, used for the actual request.
+The request will then return a `Grac::Response` object which can be used to execute some actions after
+the actual request. An example for this is checking a response signature.
 
 ### Response post processing
 

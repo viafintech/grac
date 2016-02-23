@@ -78,10 +78,10 @@ describe Grac::Client do
     %w{post put patch}.each do |method|
       context "##{method}" do
         it "calls build request with body and params" do
-          expect(grac).to receive(:build_request)
+          expect(grac).to receive(:build_and_run)
                       .with(method, { :body => {}, :params => {} })
                       .and_return(double = Object.new)
-          expect(grac).to receive(:run).with(double).and_return(true)
+          expect(grac).to receive(:check_response).with(method, double).and_return(true)
           expect(grac.send(method)).to eq(true)
         end
       end
@@ -90,10 +90,10 @@ describe Grac::Client do
     %w{get delete}.each do |method|
       context "##{method}" do
         it "calls build request with params" do
-          expect(grac).to receive(:build_request)
-                      .with(method, {  :params => {} })
+          expect(grac).to receive(:build_and_run)
+                      .with(method, { :params => {} })
                       .and_return(double = Object.new)
-          expect(grac).to receive(:run).with(double).and_return(true)
+          expect(grac).to receive(:check_response).with(method, double).and_return(true)
           expect(grac.send(method)).to eq(true)
         end
       end
@@ -159,313 +159,340 @@ describe Grac::Client do
     end
   end
 
-  context "#build_request" do
-    it "sets certain values on Typhoeus" do
-      expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80", {
-                                  :method  => "get",
-                                  :params  => {},
-                                  :body    => nil,
-                                  :connecttimeout => 0.1,
-                                  :timeout => 15,
-                                  :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
-                                })
-      grac.send(:build_request, "get", {})
+  context "#execute_request" do
+    let(:opts)        { { connecttimeout: 1, timeout: 3, headers: { "User-Agent" => "test" } } }
+    let(:method)      { "get" }
+    let(:params)      { { "param1" => "value" } }
+    let(:body)        { "body" }
+
+    let(:request_uri) { "http://example.com" }
+    let(:request_hash) {
+      {
+        method:         method,
+        params:         params,
+        body:           body,
+        connecttimeout: opts[:connecttimeout],
+        timeout:        opts[:timeout],
+        headers:        opts[:headers]
+      }
+    }
+
+    before do
+      expect(::Typhoeus::Request).to receive(:new)
+        .with(request_uri, request_hash)
+        .and_return(@request = double('request', url: request_uri))
     end
 
-    it "sets a json body" do
-      expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80", {
-                                  :method  => "post",
-                                  :params  => {},
-                                  :body    => { "abc" => "def" }.to_json,
-                                  :connecttimeout => 0.1,
-                                  :timeout => 15,
-                                  :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
-                                })
-      grac.send(:build_request, "post", { :body => { "abc" => "def" } })
+    context "the request timed out" do
+      it "raises an exception if the retry was not successful either" do
+        expect(@request).to receive(:run).twice.and_return(
+          response = double('response', body: body, return_message: "msg")
+        )
+        expect(response).to receive(:timed_out?).twice.and_return(true)
+
+        expect{
+          grac.send(:execute_request, opts, request_uri, method, params, body)
+        }.to raise_error(::Grac::Exception::ServiceTimeout, "GET 'http://example.com' timed out: msg")
+      end
+
+      context "post" do
+        let(:method) { "post" }
+
+        it "raises an exception if the request timed out" do
+          expect(@request).to receive(:run).and_return(
+            response = double('response', body: body, return_message: "msg")
+          )
+          expect(response).to receive(:timed_out?).twice.and_return(true)
+
+          expect{
+            grac.send(:execute_request, opts, request_uri, method, params, body)
+          }.to raise_error(::Grac::Exception::ServiceTimeout, "POST 'http://example.com' timed out: msg")
+        end
+      end
     end
 
-    it "sets params" do
-      expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80", {
-                                  :method  => "post",
-                                  :params  => { "abc" => "def" },
-                                  :body    => nil,
-                                  :connecttimeout => 0.1,
-                                  :timeout => 15,
-                                  :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
-                                })
-      grac.send(:build_request, "post", { :params => { "abc" => "def" } })
-    end
+    context "success" do
+      after do
+        expect(@r.class).to eq(::Grac::Response)
+        expect(@r.body).to eq(body)
+      end
 
-    it "merges with predefined params" do
-      client = grac.set(:params => { "example" => "blub" })
-      expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:80", {
-                                  :method  => "post",
-                                  :params  => { "example" => "blub", "abc" => "def" },
-                                  :body    => nil,
-                                  :connecttimeout => 0.1,
-                                  :timeout => 15,
-                                  :headers => { "User-Agent" => "Grac v#{Grac::VERSION}" }
-                                })
-      client.send(:build_request, "post", { :params => { "abc" => "def" } })
-    end
+      it "builds the request with the given parameters and executes it" do
+        expect(@request).to receive(:run).and_return(response = double('response', body: body))
+        expect(response).to receive(:timed_out?).twice.and_return(false)
 
-    it "executes middleware" do
-      client = grac.set(:middleware => [->(opts, uri, method, params, body) {
-        uri    = "#{uri}1"
-        method = method.upcase
-        params = params.merge("a" => "b")
-        body   = "abc"
-        opts   = opts.merge(:headers => { "Auth" => "value" })
+        @r = grac.send(:execute_request, opts, request_uri, method, params, body)
+      end
 
-        return opts, uri, method, params, body
-      }])
-      expect(Typhoeus::Request).to receive(:new)
-                               .with("http://localhost:801", {
-                                  :method  => "POST",
-                                  :params  => { "abc" => "def", "a" => "b" },
-                                  :body    => "abc",
-                                  :connecttimeout => 0.1,
-                                  :timeout => 15,
-                                  :headers => { "Auth" => "value" }
-                                })
-      client.send(:build_request, "post", { :params => { "abc" => "def" } })
-    end
+      it "retries if the request timed_out in the beginning" do
+        expect(@request).to receive(:run).twice.and_return(response = double('response', body: body))
+        expect(response).to receive(:timed_out?).twice.and_return(true, false)
 
-    it "raises an exception if a middleware tries to directly change opts" do
-      client = grac.set(:middleware => [->(opts, uri, method, params, body) {
-        opts[:timemout] = 12
+        @r = grac.send(:execute_request, opts, request_uri, method, params, body)
+      end
 
-        return opts, uri, method, params, body
-      }])
-      expect{
-        client.send(:build_request, "post", { :params => { "abc" => "def" } })
-      }.to raise_exception(RuntimeError, "can't modify frozen Hash")
-    end
+      context "post" do
+        let(:method) { "post" }
 
-    it "raises an exception if a middleware tries to directly change url" do
-      client = grac.set(:middleware => [->(opts, uri, method, params, body) {
-        uri[2] = "k"
+        it "does not retry if the http method is not get/head" do
+          expect(@request).to receive(:run).and_return(response = double('response', body: body))
+          expect(response).to receive(:timed_out?).twice.and_return(true, false)
 
-        return opts, uri, method, params, body
-      }])
-      expect{
-        client.send(:build_request, "post", { :params => { "abc" => "def" } })
-      }.to raise_exception(RuntimeError, "can't modify frozen String")
+          @r = grac.send(:execute_request, opts, request_uri, method, params, body)
+        end
+      end
     end
   end
 
-  context "#run" do
-    let(:request) { double('request', 'options' => { "method" => "get" },
-                           'url' => grac.uri) }
-    let(:response) { double('response', 'timed_out?' => false, 'code' => 200,
-                            'body' => response_body,
-                            'headers' => { 'Content-Type' => 'application/json?encoding=utf-8' }) }
-    let(:response_body) { { "value" => "success" }.to_json }
+  context "wrap_middleware" do
+    let(:changeable_context) { [] }
+    let(:base) {
+      lambda { |a, b|
+        changeable_context << a
+        changeable_context << b
+        return a + b
+      }
+    }
+    let(:mw1) {
+      lambda { |*params, &block|
+        changeable_context << "mw1_up"
+        result = block.call(*params)
+        changeable_context << "mw1_down"
+        return result
+      }
+    }
+    let(:mw2) {
+      lambda { |a, b, &block|
+        changeable_context << "mw2_up"
+        result = block.call(a, b)
+        changeable_context << "mw2_down"
+        return result + 1
+      }
+    }
 
-    before do
-      expect(request).to receive(:run).and_return(response)
+    it "wraps a lambda in another" do
+      caller = grac.send(:wrap_middleware, mw1, base)
+      expect(caller.call(1, 2)).to eq(3)
+      expect(changeable_context).to eq(["mw1_up", 1, 2, "mw1_down"])
     end
 
-    context "retry" do
-      it "retries for get" do
-        expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
+    it "wraps a second lambda" do
+      caller = grac.send(:wrap_middleware, mw1, base)
+      caller = grac.send(:wrap_middleware, mw2, caller)
+      expect(caller.call(1, 2)).to eq(4)
+      expect(changeable_context).to eq(["mw2_up", "mw1_up", 1, 2, "mw1_down", "mw2_down"])
+    end
+  end
 
-      it "retries for head" do
-        expect(request).to receive(:run).and_return(response)
-        expect(request).to receive(:options).and_return({ :method => "head" })
-        expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
+  context "wrapped_request" do
+    let(:changeable_context) { [] }
+    let(:mw1) {
+      lambda { |*params, &block|
+        changeable_context << "mw1_up"
+        result = block.call(*params)
+        changeable_context << "mw1_down"
+        return result
+      }
+    }
 
-      it "does not retry for post" do
-        expect(request).to receive(:options).and_return({ :method => "post" })
-        expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
+    it "wraps all middleware around execute_request" do
+      client = grac.set(:middleware => [mw1])
+      caller = client.send(:wrapped_request)
+      expect(
+        ::Typhoeus::Request
+      ).to receive(:new).with(
+        "http://example.com",
+        {
+          method:         "GET",
+          params:         {},
+          body:           "",
+          connecttimeout: nil,
+          timeout:        nil,
+          headers:        nil
+        }
+      ).and_return(request = double('request'))
+      expect(request).to receive(:run).and_return(response = double('response'))
+      allow(response).to receive(:timed_out?).and_return(false)
+      expect(caller.call({}, "http://example.com", "GET", {}, "").class).to eq(::Grac::Response)
+      expect(changeable_context).to eq(["mw1_up", "mw1_down"])
+    end
+  end
 
-      it "does not retry for put" do
-        expect(request).to receive(:options).and_return({ :method => "put" })
-        expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
-
-      it "does not retry for patch" do
-        expect(request).to receive(:options).and_return({ :method => "patch" })
-        expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
-
-      it "does not retry for delete" do
-        expect(request).to receive(:options).and_return({ :method => "delete" })
-        expect(response).to receive(:timed_out?).and_return(true, false)
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
-
-      it "raises a ServiceTimeout if the response timed out" do
-        expect(request).to receive(:options).and_return({ :method => "put" })
-        expect(response).to receive(:timed_out?).twice.and_return(true)
-        allow(response).to receive(:return_message).and_return("timeout")
-        expect{
-          grac.send(:run, request)
-        }.to raise_exception(
-          Grac::Exception::ServiceTimeout,
-          "PUT '#{grac.uri}' timed out: timeout"
-        )
-      end
+  context "#build_and_run" do
+    it "builds the parameters and passes them to the wrapped_request" do
+      expect(grac).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+      expect(middleware_stack).to receive(:call).with(
+        grac.instance_variable_get(:@options), grac.uri, "get", {}, nil
+      ).and_return(1)
+      expect(grac.send(:build_and_run, "get", {})).to eq(1)
     end
 
-    context "response code 200" do
-      it "returns a parsed json body" do
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
-
-      it "returns the body as is if the content type is not json" do
-        allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
-        expect(grac.send(:run, request)).to eq("{\"value\":\"success\"}")
-      end
-
-      context "with invalid JSON" do
-        let(:response_body) { "INVALID JSON" }
-
-        it 'raises an InvalidContent exception' do
-          expect {
-            grac.send(:run, request)
-          }.to raise_exception(Grac::Exception::InvalidContent,
-                               "Failed to parse body as 'json': '#{response_body}'")
-        end
-      end
-
-      context "with postprocessing" do
-        let(:grac) { super().set(:postprocessing => { '.*' => ->(v){ 'CHANGED' } })}
-
-        it "runs the postprocessing" do
-          expect(grac.send(:run, request)).to eq({ "value" => "CHANGED" })
-        end
-      end
+    it "calls the wrapped_request with a body" do
+      expect(grac).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+      expect(middleware_stack).to receive(:call).with(
+        grac.instance_variable_get(:@options), grac.uri, "get", {}, { data: "asd" }.to_json
+      ).and_return(1)
+      expect(grac.send(:build_and_run, "get", { :body => { data: "asd" } })).to eq(1)
     end
 
-    context "unknown response code 299" do
-      before do
-        allow(response).to receive(:code).and_return(299)
-      end
-
-      it "returns a parsed json body" do
-        expect(grac.send(:run, request)).to eq({ "value" => "success" })
-      end
-
-      it "returns the body as is if the content type is not json" do
-        allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
-        expect(grac.send(:run, request)).to eq("{\"value\":\"success\"}")
-      end
+    it "calls the wrapped_request with a params" do
+      expect(grac).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+      expect(middleware_stack).to receive(:call).with(
+        grac.instance_variable_get(:@options), grac.uri, "get", { data: "asd" }, nil
+      ).and_return(1)
+      expect(grac.send(:build_and_run, "get", { :params => { data: "asd" } })).to eq(1)
     end
 
-    context "response code 204" do
-      before do
-        allow(response).to receive(:code).and_return(204)
-      end
+    it "calls the wrapped_request with predefined parameters" do
+      client = grac.set(params: { "a" => "b" })
+
+      expect(client).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+      expect(middleware_stack).to receive(:call).with(
+        client.instance_variable_get(:@options), client.uri, "get", { "a" => "b", "c" => "b" }, nil
+      ).and_return(1)
+      expect(client.send(:build_and_run, "get", { :params => { "c" => "b" } })).to eq(1)
+    end
+  end
+
+  context "#check_response" do
+    let(:method)            { "GET" }
+    let(:response_code)     { 200 }
+    let(:return_message)    { nil }
+    let(:response_headers)  { { 'Content-Type' => 'application/json?encoding=utf-8' } }
+    let(:response_body)     { { "value" => "success" }.to_json }
+    let(:typhoeus_response) { double('response', 'effective_url' => grac.uri,
+                                     'code' => response_code, 'return_message' => return_message,
+                                     'body' => response_body,
+                                     'headers' => response_headers) }
+    let(:grac_response) {
+      Grac::Response.new(typhoeus_response)
+    }
+
+    context "204" do
+      let(:response_code) { 204 }
 
       it "returns true" do
-        expect(grac.send(:run, request)).to eq(true)
+        expect(grac.send(:check_response, method, grac_response)).to eq(true)
       end
     end
 
-    context "response code 0" do
-      before do
-        allow(response).to receive(:code).and_return(0)
-        allow(response).to receive(:return_message).and_return("timeout")
+    context "205" do
+      let(:response_code) { 205 }
+
+      it "returns true" do
+        expect(grac.send(:check_response, method, grac_response)).to eq(true)
+      end
+    end
+
+    context "2XX" do
+      it "returns the parsed json body" do
+        expect(grac.send(:check_response, method, grac_response)).to eq({ "value" => "success" })
       end
 
+      it "returns the parsed json body with postprocessing" do
+        client = grac.set(:postprocessing => { "value" => ->(val){ return val.upcase } })
+        expect(client.send(:check_response, method, grac_response)).to eq({ "value" => "SUCCESS" })
+      end
+
+      context "raw body" do
+        let(:response_headers) { {} }
+
+        it "returns the raw body" do
+          expect(
+            grac.send(:check_response, method, grac_response)
+          ).to eq({ "value" => "success" }.to_json)
+        end
+      end
+    end
+
+    context "0" do
+      let(:response_code) { 0 }
+      let(:return_message) { "timeout" }
+
       it "raises a RequestFailed exception" do
-        expect(request).to receive(:options).and_return({ :method => "get" })
         expect{
-          grac.send(:run, request)
+          grac.send(:check_response, method, grac_response)
         }.to raise_exception(Grac::Exception::RequestFailed, "GET '#{grac.uri}' failed: timeout")
       end
     end
 
-    context "response code 400" do
-      before do
-        allow(response).to receive(:request).and_return(request)
-        allow(response).to receive(:code).and_return(400)
-        expect(request).to receive(:options).and_return({ method: "post" })
-      end
+    context "400" do
+      let(:response_code) { 400 }
 
-      it "raises a BadRequest exception" do
-        expect{
-          grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::BadRequest)
-      end
-
-      context "with json content type but invalid json" do
-        let(:response_body) { "INVALID JSON" }
-
-        it "raises a BadRequest exception with the raw body" do
+      context "json" do
+        it "raises a BadRequest exception" do
           expect{
-            grac.send(:run, request)
-          }.to raise_exception(Grac::Exception::BadRequest,
-            "POST '#{grac.uri}' failed with content: INVALID JSON")
+            grac.send(:check_response, method, grac_response)
+          }.to raise_exception(
+            Grac::Exception::BadRequest,
+            "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+          )
         end
       end
 
-      context "with non-json content type" do
-        let(:response_body) { "SOME PLAIN ERROR" }
+      context "plain text" do
+        let(:response_headers) { { "Content-Type" => "text/plain" } }
 
-        before do
-          allow(response).to receive(:headers).and_return({ "Content-Type" => "text/plain" })
-        end
-
-        it "raises a BadRequest exception with the raw body" do
+        it "raises a BadRequest exception" do
           expect{
-            grac.send(:run, request)
-          }.to raise_exception(Grac::Exception::BadRequest,
-            "POST '#{grac.uri}' failed with content: SOME PLAIN ERROR")
+            grac.send(:check_response, method, grac_response)
+          }.to raise_exception(
+            Grac::Exception::BadRequest,
+            "GET '#{grac.uri}' failed with content: {\"value\":\"success\"}"
+          )
         end
       end
     end
 
-    context "response code 403" do
+    context "403" do
+      let(:response_code) { 403 }
+
       it "raises a Forbidden exception" do
-        allow(response).to receive(:request).and_return(request)
-        allow(response).to receive(:code).and_return(403)
         expect{
-          grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::Forbidden)
+          grac.send(:check_response, method, grac_response)
+        }.to raise_exception(
+          Grac::Exception::Forbidden,
+          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+        )
       end
     end
 
-    context "response code 404" do
+    context "404" do
+      let(:response_code) { 404 }
+
       it "raises a NotFound exception" do
-        allow(response).to receive(:request).and_return(request)
-        allow(response).to receive(:code).and_return(404)
         expect{
-          grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::NotFound)
+          grac.send(:check_response, method, grac_response)
+        }.to raise_exception(
+          Grac::Exception::NotFound,
+          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+        )
       end
     end
 
-    context "response code 409" do
+    context "409" do
+      let(:response_code) { 409 }
+
       it "raises a Conflict exception" do
-        allow(response).to receive(:request).and_return(request)
-        allow(response).to receive(:code).and_return(409)
         expect{
-          grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::Conflict)
+          grac.send(:check_response, method, grac_response)
+        }.to raise_exception(
+          Grac::Exception::Conflict,
+          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+        )
       end
     end
 
-    context "other response code e.g. 500" do
+    context "500/others" do
+      let(:response_code) { 500 }
+
       it "raises a ServiceError exception" do
-        allow(response).to receive(:request).and_return(request)
-        allow(response).to receive(:code).and_return(500)
         expect{
-          grac.send(:run, request)
-        }.to raise_exception(Grac::Exception::ServiceError)
+          grac.send(:check_response, method, grac_response)
+        }.to raise_exception(
+          Grac::Exception::ServiceError,
+          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+        )
       end
     end
   end

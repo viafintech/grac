@@ -19,7 +19,7 @@ module Grac
         :params         => options[:params]         || {},
         :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" }.merge(options[:headers] || {}),
         :postprocessing => options[:postprocessing] || {},
-        :middleware     => options[:middleware]    || []
+        :middleware     => options[:middleware]     || []
       }
       @options.freeze
       [:params, :headers, :postprocessing, :middleware].each do |k|
@@ -30,7 +30,7 @@ module Grac
 
     def set(options = {})
       options = options.merge({
-        headers:    @options[:headers].merge(options[:headers]      || {}),
+        headers:    @options[:headers].merge(options[:headers]    || {}),
         middleware: @options[:middleware] + (options[:middleware] || [])
       })
 
@@ -46,40 +46,19 @@ module Grac
 
     %w{post put patch}.each do |method|
       define_method method do |body = {}, params = {}|
-        request = build_request(method, { :body => body, :params => params })
-        run(request)
+        response = build_and_run(method, { :body => body, :params => params })
+        check_response(method, response)
       end
     end
 
     %w{get delete}.each do |method|
       define_method method do |params = {}|
-        request = build_request(method, { :params => params })
-        run(request)
+        response = build_and_run(method, { :params => params })
+        check_response(method, response)
       end
     end
 
     private
-      def build_request(method, options = {})
-        body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
-        params = @options[:params].merge(options[:params] || {})
-
-        opts        = @options
-        request_uri = uri
-
-        @options[:middleware].each do |mw|
-          opts, request_uri, method, params, body = mw.call(opts, request_uri, method, params, body)
-        end
-
-        request_hash = { :method => method }
-        request_hash[:params]         = params
-        request_hash[:body]           = body
-        request_hash[:connecttimeout] = opts[:connecttimeout]
-        request_hash[:timeout]        = opts[:timeout]
-        request_hash[:headers]        = opts[:headers]
-
-        return ::Typhoeus::Request.new(request_uri, request_hash)
-      end
-
       def postprocessing(data, processing = nil)
         return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
@@ -105,11 +84,20 @@ module Grac
         return data
       end
 
-      def run(request)
+      def execute_request(opts, request_uri, method, params, body)
+        request_hash = {
+          :method         => method,
+          :params         => params,
+          :body           => body,
+          :connecttimeout => opts[:connecttimeout],
+          :timeout        => opts[:timeout],
+          :headers        => opts[:headers]
+        }
+
+        request  = ::Typhoeus::Request.new(request_uri, request_hash)
         response = request.run
 
         # Retry GET and HEAD requests - modifying requests might not be idempotent
-        method = request.options[:method].to_s.downcase
         response = request.run if response.timed_out? && ['get', 'head'].include?(method)
 
         # A request can time out while receiving data. In this case response.code might indicate
@@ -119,29 +107,56 @@ module Grac
           raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
         end
 
-        grac_response = Response.new(response)
+        return Response.new(response)
+      end
+
+      def wrap_middleware(middleware, caller)
+        return lambda do |*params|
+          middleware.call(*params) do |*block_params|
+            caller.call(*block_params)
+          end
+        end
+      end
+
+      def wrapped_request
+        caller = lambda(&method(:execute_request))
+
+        @options[:middleware].reverse.each do |mw|
+          caller = wrap_middleware(mw, caller)
+        end
+
+        return caller
+      end
+
+      def build_and_run(method, options = {})
+        body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
+        params = @options[:params].merge(options[:params] || {})
+        return wrapped_request.call(@options, uri, method, params, body)
+      end
+
+      def check_response(method, response)
         case response.code
           when 200..203, 206..299
             # unknown status codes must be treated as the x00 of their class, so 200
-            if grac_response.json_content?
-              return postprocessing(grac_response.parsed_json)
+            if response.json_content?
+              return postprocessing(response.parsed_json)
             end
 
-            return grac_response.body
+            return response.body
           when 204, 205
             return true
           when 0
-            raise Exception::RequestFailed.new(method, request.url, response.return_message)
+            raise Exception::RequestFailed.new(method, response.effective_url, response.return_message)
           when 400
-            raise Exception::BadRequest.new(method, request.url, grac_response.parsed_or_raw_body)
+            raise Exception::BadRequest.new(method, response.effective_url, response.parsed_or_raw_body)
           when 403
-            raise Exception::Forbidden.new(method, request.url, grac_response.parsed_or_raw_body)
+            raise Exception::Forbidden.new(method, response.effective_url, response.parsed_or_raw_body)
           when 404
-            raise Exception::NotFound.new(method, request.url, grac_response.parsed_or_raw_body)
+            raise Exception::NotFound.new(method, response.effective_url, response.parsed_or_raw_body)
           when 409
-            raise Exception::Conflict.new(method, request.url, grac_response.parsed_or_raw_body)
+            raise Exception::Conflict.new(method, response.effective_url, response.parsed_or_raw_body)
           else
-            raise Exception::ServiceError.new(method, request.url, grac_response.parsed_or_raw_body)
+            raise Exception::ServiceError.new(method, response.effective_url, response.parsed_or_raw_body)
         end
       end
   end
