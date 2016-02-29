@@ -58,6 +58,32 @@ module Grac
       end
     end
 
+    def call(opts, request_uri, method, params, body)
+      request_hash = {
+        :method         => method,
+        :params         => params,
+        :body           => body,
+        :connecttimeout => opts[:connecttimeout],
+        :timeout        => opts[:timeout],
+        :headers        => opts[:headers]
+      }
+
+      request  = ::Typhoeus::Request.new(request_uri, request_hash)
+      response = request.run
+
+      # Retry GET and HEAD requests - modifying requests might not be idempotent
+      response = request.run if response.timed_out? && ['get', 'head'].include?(method)
+
+      # A request can time out while receiving data. In this case response.code might indicate
+      # success although data hasn't been fully transferred. Thus rely on Typhoeus for
+      # detecting a timeout.
+      if response.timed_out?
+        raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
+      end
+
+      return Response.new(response)
+    end
+
     private
       def postprocessing(data, processing = nil)
         return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
@@ -84,45 +110,11 @@ module Grac
         return data
       end
 
-      def execute_request(opts, request_uri, method, params, body)
-        request_hash = {
-          :method         => method,
-          :params         => params,
-          :body           => body,
-          :connecttimeout => opts[:connecttimeout],
-          :timeout        => opts[:timeout],
-          :headers        => opts[:headers]
-        }
-
-        request  = ::Typhoeus::Request.new(request_uri, request_hash)
-        response = request.run
-
-        # Retry GET and HEAD requests - modifying requests might not be idempotent
-        response = request.run if response.timed_out? && ['get', 'head'].include?(method)
-
-        # A request can time out while receiving data. In this case response.code might indicate
-        # success although data hasn't been fully transferred. Thus rely on Typhoeus for
-        # detecting a timeout.
-        if response.timed_out?
-          raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
-        end
-
-        return Response.new(response)
-      end
-
-      def wrap_middleware(middleware, caller)
-        return lambda do |*params|
-          middleware.call(*params) do |*block_params|
-            caller.call(*block_params)
-          end
-        end
-      end
-
       def wrapped_request
-        caller = lambda(&method(:execute_request))
+        caller = self
 
         @options[:middleware].reverse.each do |mw|
-          caller = wrap_middleware(mw, caller)
+          caller = mw.chain(caller)
         end
 
         return caller

@@ -159,7 +159,7 @@ describe Grac::Client do
     end
   end
 
-  context "#execute_request" do
+  context "#call" do
     let(:opts)        { { connecttimeout: 1, timeout: 3, headers: { "User-Agent" => "test" } } }
     let(:method)      { "get" }
     let(:params)      { { "param1" => "value" } }
@@ -191,7 +191,7 @@ describe Grac::Client do
         expect(response).to receive(:timed_out?).twice.and_return(true)
 
         expect{
-          grac.send(:execute_request, opts, request_uri, method, params, body)
+          grac.call(opts, request_uri, method, params, body)
         }.to raise_error(::Grac::Exception::ServiceTimeout, "GET 'http://example.com' timed out: msg")
       end
 
@@ -205,7 +205,7 @@ describe Grac::Client do
           expect(response).to receive(:timed_out?).twice.and_return(true)
 
           expect{
-            grac.send(:execute_request, opts, request_uri, method, params, body)
+            grac.call(opts, request_uri, method, params, body)
           }.to raise_error(::Grac::Exception::ServiceTimeout, "POST 'http://example.com' timed out: msg")
         end
       end
@@ -221,14 +221,14 @@ describe Grac::Client do
         expect(@request).to receive(:run).and_return(response = double('response', body: body))
         expect(response).to receive(:timed_out?).twice.and_return(false)
 
-        @r = grac.send(:execute_request, opts, request_uri, method, params, body)
+        @r = grac.call(opts, request_uri, method, params, body)
       end
 
       it "retries if the request timed_out in the beginning" do
         expect(@request).to receive(:run).twice.and_return(response = double('response', body: body))
         expect(response).to receive(:timed_out?).twice.and_return(true, false)
 
-        @r = grac.send(:execute_request, opts, request_uri, method, params, body)
+        @r = grac.call(opts, request_uri, method, params, body)
       end
 
       context "post" do
@@ -238,65 +238,18 @@ describe Grac::Client do
           expect(@request).to receive(:run).and_return(response = double('response', body: body))
           expect(response).to receive(:timed_out?).twice.and_return(true, false)
 
-          @r = grac.send(:execute_request, opts, request_uri, method, params, body)
+          @r = grac.call(opts, request_uri, method, params, body)
         end
       end
     end
   end
 
-  context "wrap_middleware" do
-    let(:changeable_context) { [] }
-    let(:base) {
-      lambda { |a, b|
-        changeable_context << a
-        changeable_context << b
-        return a + b
-      }
-    }
-    let(:mw1) {
-      lambda { |*params, &block|
-        changeable_context << "mw1_up"
-        result = block.call(*params)
-        changeable_context << "mw1_down"
-        return result
-      }
-    }
-    let(:mw2) {
-      lambda { |a, b, &block|
-        changeable_context << "mw2_up"
-        result = block.call(a, b)
-        changeable_context << "mw2_down"
-        return result + 1
-      }
-    }
-
-    it "wraps a lambda in another" do
-      caller = grac.send(:wrap_middleware, mw1, base)
-      expect(caller.call(1, 2)).to eq(3)
-      expect(changeable_context).to eq(["mw1_up", 1, 2, "mw1_down"])
-    end
-
-    it "wraps a second lambda" do
-      caller = grac.send(:wrap_middleware, mw1, base)
-      caller = grac.send(:wrap_middleware, mw2, caller)
-      expect(caller.call(1, 2)).to eq(4)
-      expect(changeable_context).to eq(["mw2_up", "mw1_up", 1, 2, "mw1_down", "mw2_down"])
-    end
-  end
-
   context "wrapped_request" do
-    let(:changeable_context) { [] }
-    let(:mw1) {
-      lambda { |*params, &block|
-        changeable_context << "mw1_up"
-        result = block.call(*params)
-        changeable_context << "mw1_down"
-        return result
-      }
-    }
-
     it "wraps all middleware around execute_request" do
-      client = grac.set(:middleware => [mw1])
+      tmw = TestMiddleware.new
+      client = grac.set(:middleware => [tmw])
+      expect(tmw).to receive(:chain).with(client).and_call_original
+      expect(tmw).to receive(:call).with({}, "http://example.com", "GET", {}, "").and_call_original
       caller = client.send(:wrapped_request)
       expect(
         ::Typhoeus::Request
@@ -313,8 +266,8 @@ describe Grac::Client do
       ).and_return(request = double('request'))
       expect(request).to receive(:run).and_return(response = double('response'))
       allow(response).to receive(:timed_out?).and_return(false)
-      expect(caller.call({}, "http://example.com", "GET", {}, "").class).to eq(::Grac::Response)
-      expect(changeable_context).to eq(["mw1_up", "mw1_down"])
+      response_object = caller.call({}, "http://example.com", "GET", {}, "")
+      expect(response_object.class).to eq(::Grac::Response)
     end
   end
 

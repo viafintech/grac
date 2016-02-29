@@ -156,22 +156,38 @@ An example would be an `Authorization` header with a signature depending on host
 While this could be calculated before making the request it is just convenient to have it done
 automatically with each request.
 
-For this purpose `Proc`s/`lambda`s can be set on the Grac object following the example below:
+For this purpose an object can be added as middleware which supports the methods `chain` and `call`.
+`chain` is used to chain other middleware down to the actual request. It accepts one parameter which
+should be the `Grac` object or another middleware and it should return itself.
+`call` should accept the parameters as shown in the example below:
 
 ```ruby
-mw = lambda do |opts, request_uri, method, params, body, &block|
-  # your code here
-  # opts        - Hash of the options currently set on the grac object
-  # request_uri - uri returned by grac
-  # method      - http method (lower case)
-  # params      - hash of all params for this request
-  # body        - serialized body
-  result = block.call(opts, request_uri, method, params, body)
-  # your code for working on the response here
-  return result
+class MW
+  def initialize(options = {})
+    # Use initialize to add any specific configuration
+  end
+
+  def chain(request)
+    @request = request
+    return self
+  end
+
+  def call(opts, request_uri, method, params, body)
+    # your code here
+    # opts        - Hash of the options currently set on the grac object
+    # request_uri - uri returned by grac
+    # method      - http method (lower case)
+    # params      - hash of all params for this request
+    # body        - serialized body
+
+    result = @request.call(opts, request_uri, method, params, body)
+
+    # your code for working on the response here
+    return result
+  end
 end
 
-Grac::Client.new("http://localhost:80", middleware: [mw])
+Grac::Client.new("http://localhost:80", middleware: [MW])
 ```
 
 Multiple middlewares can be added and they are wrapped in the order they were added, the first one
