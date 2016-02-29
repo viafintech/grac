@@ -1,4 +1,9 @@
 class TestMiddleware
+  def initialize(request, *params)
+    @request = request
+    @params  = params
+  end
+
   def chain(request)
     @request = request
     return self

@@ -245,12 +245,9 @@ describe Grac::Client do
   end
 
   context "wrapped_request" do
-    it "wraps all middleware around execute_request" do
-      tmw = TestMiddleware.new
-      client = grac.set(:middleware => [tmw])
-      expect(tmw).to receive(:chain).with(client).and_call_original
-      expect(tmw).to receive(:call).with({}, "http://example.com", "GET", {}, "").and_call_original
-      caller = client.send(:wrapped_request)
+    after do
+      caller = @client.send(:wrapped_request)
+
       expect(
         ::Typhoeus::Request
       ).to receive(:new).with(
@@ -268,6 +265,16 @@ describe Grac::Client do
       allow(response).to receive(:timed_out?).and_return(false)
       response_object = caller.call({}, "http://example.com", "GET", {}, "")
       expect(response_object.class).to eq(::Grac::Response)
+    end
+
+    it "wraps all middleware around execute_request" do
+      @client = grac.set(:middleware => [TestMiddleware])
+      expect(TestMiddleware).to receive(:new).with(@client).and_call_original
+    end
+
+    it "calls the middleware with configuration parameters" do
+      @client = grac.set(:middleware => [[TestMiddleware, "abc", { key: "value"}]])
+      expect(TestMiddleware).to receive(:new).with(@client, "abc", { key: "value" }).and_call_original
     end
   end
 

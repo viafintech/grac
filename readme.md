@@ -156,20 +156,18 @@ An example would be an `Authorization` header with a signature depending on host
 While this could be calculated before making the request it is just convenient to have it done
 automatically with each request.
 
-For this purpose an object can be added as middleware which supports the methods `chain` and `call`.
-`chain` is used to chain other middleware down to the actual request. It accepts one parameter which
-should be the `Grac` object or another middleware and it should return itself.
-`call` should accept the parameters as shown in the example below:
+For this purpose a class can be added as middleware which accepts at least one parameter during
+initialization and has a call method accepting the parameters as shown in the example below.
+The first parameter will always be the request object, i.e. the instance of `Grac` or another middleware
+already wrapper around it. Additional configuration can be provided to the middleware by accepting
+additional parameters. These will be passed along during the request when initializing the middleware.
+
 
 ```ruby
 class MW
-  def initialize(options = {})
-    # Use initialize to add any specific configuration
-  end
-
-  def chain(request)
+  def initialize(request, *params)
     @request = request
-    return self
+    @params  = params
   end
 
   def call(opts, request_uri, method, params, body)
@@ -187,7 +185,11 @@ class MW
   end
 end
 
+# Configuring Middleware
 Grac::Client.new("http://localhost:80", middleware: [MW])
+
+# Configuring Middleware with additional parameters
+Grac::Client.new("http://localhost:80", middleware: [[MW, "abc"]])
 ```
 
 Multiple middlewares can be added and they are wrapped in the order they were added, the first one

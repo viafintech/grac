@@ -114,7 +114,14 @@ module Grac
         caller = self
 
         @options[:middleware].reverse.each do |mw|
-          caller = mw.chain(caller)
+          if mw.kind_of?(Array)
+            middleware_class = mw[0]
+            params           = mw[1..-1]
+
+            caller = middleware_class.new(caller, *params)
+          else
+            caller = mw.new(caller)
+          end
         end
 
         return caller
