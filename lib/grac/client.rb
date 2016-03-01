@@ -89,10 +89,10 @@ module Grac
     def build_and_run(method, options = {})
       body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
       params = @options[:params].merge(options[:params] || {})
-      return wrapped_request.call(@options, uri, method, params, body)
+      return middleware_chain.call(@options, uri, method, params, body)
     end
 
-    def wrapped_request
+    def middleware_chain
       callee = self
 
       @options[:middleware].reverse.each do |mw|

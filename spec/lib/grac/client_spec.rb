@@ -244,9 +244,9 @@ describe Grac::Client do
     end
   end
 
-  context "wrapped_request" do
+  context "middleware_chain" do
     after do
-      caller = @client.send(:wrapped_request)
+      caller = @client.send(:middleware_chain)
 
       expect(
         ::Typhoeus::Request
@@ -279,34 +279,34 @@ describe Grac::Client do
   end
 
   context "#build_and_run" do
-    it "builds the parameters and passes them to the wrapped_request" do
-      expect(grac).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+    it "builds the parameters and passes them to the middleware_chain" do
+      expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
       expect(middleware_stack).to receive(:call).with(
         grac.instance_variable_get(:@options), grac.uri, "get", {}, nil
       ).and_return(1)
       expect(grac.send(:build_and_run, "get", {})).to eq(1)
     end
 
-    it "calls the wrapped_request with a body" do
-      expect(grac).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+    it "calls the middleware_chain with a body" do
+      expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
       expect(middleware_stack).to receive(:call).with(
         grac.instance_variable_get(:@options), grac.uri, "get", {}, { data: "asd" }.to_json
       ).and_return(1)
       expect(grac.send(:build_and_run, "get", { :body => { data: "asd" } })).to eq(1)
     end
 
-    it "calls the wrapped_request with a params" do
-      expect(grac).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+    it "calls the middleware_chain with a params" do
+      expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
       expect(middleware_stack).to receive(:call).with(
         grac.instance_variable_get(:@options), grac.uri, "get", { data: "asd" }, nil
       ).and_return(1)
       expect(grac.send(:build_and_run, "get", { :params => { data: "asd" } })).to eq(1)
     end
 
-    it "calls the wrapped_request with predefined parameters" do
+    it "calls the middleware_chain with predefined parameters" do
       client = grac.set(params: { "a" => "b" })
 
-      expect(client).to receive(:wrapped_request).and_return(middleware_stack = double('mw'))
+      expect(client).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
       expect(middleware_stack).to receive(:call).with(
         client.instance_variable_get(:@options), client.uri, "get", { "a" => "b", "c" => "b" }, nil
       ).and_return(1)
