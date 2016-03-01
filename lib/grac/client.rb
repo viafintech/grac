@@ -86,78 +86,78 @@ module Grac
 
     private
 
-      def build_and_run(method, options = {})
-        body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
-        params = @options[:params].merge(options[:params] || {})
-        return wrapped_request.call(@options, uri, method, params, body)
-      end
+    def build_and_run(method, options = {})
+      body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
+      params = @options[:params].merge(options[:params] || {})
+      return wrapped_request.call(@options, uri, method, params, body)
+    end
 
-      def wrapped_request
-        caller = self
+    def wrapped_request
+      caller = self
 
-        @options[:middleware].reverse.each do |mw|
-          if mw.kind_of?(Array)
-            middleware_class = mw[0]
-            params           = mw[1..-1]
+      @options[:middleware].reverse.each do |mw|
+        if mw.kind_of?(Array)
+          middleware_class = mw[0]
+          params           = mw[1..-1]
 
-            caller = middleware_class.new(caller, *params)
-          else
-            caller = mw.new(caller)
-          end
-        end
-
-        return caller
-      end
-
-      def check_response(method, response)
-        case response.code
-          when 200..203, 206..299
-            # unknown status codes must be treated as the x00 of their class, so 200
-            if response.json_content?
-              return postprocessing(response.parsed_json)
-            end
-
-            return response.body
-          when 204, 205
-            return true
-          when 0
-            raise Exception::RequestFailed.new(method, response.effective_url, response.return_message)
-          when 400
-            raise Exception::BadRequest.new(method, response.effective_url, response.parsed_or_raw_body)
-          when 403
-            raise Exception::Forbidden.new(method, response.effective_url, response.parsed_or_raw_body)
-          when 404
-            raise Exception::NotFound.new(method, response.effective_url, response.parsed_or_raw_body)
-          when 409
-            raise Exception::Conflict.new(method, response.effective_url, response.parsed_or_raw_body)
-          else
-            raise Exception::ServiceError.new(method, response.effective_url, response.parsed_or_raw_body)
-        end
-      end
-
-      def postprocessing(data, processing = nil)
-        return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
-
-        if data.kind_of?(Hash)
-          data.each do |key, value|
-            processing = nil
-            @options[:postprocessing].each do |regex, action|
-              if /#{regex}/ =~ key
-                processing = action
-              end
-            end
-
-            data[key] = postprocessing(value, processing)
-          end
-        elsif data.kind_of?(Array)
-          data.each_with_index do |value, index|
-            data[index] = postprocessing(value, processing)
-          end
+          caller = middleware_class.new(caller, *params)
         else
-          data = processing.nil? ? data : processing.call(data)
+          caller = mw.new(caller)
         end
-
-        return data
       end
+
+      return caller
+    end
+
+    def check_response(method, response)
+      case response.code
+        when 200..203, 206..299
+          # unknown status codes must be treated as the x00 of their class, so 200
+          if response.json_content?
+            return postprocessing(response.parsed_json)
+          end
+
+          return response.body
+        when 204, 205
+          return true
+        when 0
+          raise Exception::RequestFailed.new(method, response.effective_url, response.return_message)
+        when 400
+          raise Exception::BadRequest.new(method, response.effective_url, response.parsed_or_raw_body)
+        when 403
+          raise Exception::Forbidden.new(method, response.effective_url, response.parsed_or_raw_body)
+        when 404
+          raise Exception::NotFound.new(method, response.effective_url, response.parsed_or_raw_body)
+        when 409
+          raise Exception::Conflict.new(method, response.effective_url, response.parsed_or_raw_body)
+        else
+          raise Exception::ServiceError.new(method, response.effective_url, response.parsed_or_raw_body)
+      end
+    end
+
+    def postprocessing(data, processing = nil)
+      return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
+
+      if data.kind_of?(Hash)
+        data.each do |key, value|
+          processing = nil
+          @options[:postprocessing].each do |regex, action|
+            if /#{regex}/ =~ key
+              processing = action
+            end
+          end
+
+          data[key] = postprocessing(value, processing)
+        end
+      elsif data.kind_of?(Array)
+        data.each_with_index do |value, index|
+          data[index] = postprocessing(value, processing)
+        end
+      else
+        data = processing.nil? ? data : processing.call(data)
+      end
+
+      return data
+    end
   end
 end
