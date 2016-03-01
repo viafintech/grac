@@ -85,29 +85,11 @@ module Grac
     end
 
     private
-      def postprocessing(data, processing = nil)
-        return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
-        if data.kind_of?(Hash)
-          data.each do |key, value|
-            processing = nil
-            @options[:postprocessing].each do |regex, action|
-              if /#{regex}/ =~ key
-                processing = action
-              end
-            end
-
-            data[key] = postprocessing(value, processing)
-          end
-        elsif data.kind_of?(Array)
-          data.each_with_index do |value, index|
-            data[index] = postprocessing(value, processing)
-          end
-        else
-          data = processing.nil? ? data : processing.call(data)
-        end
-
-        return data
+      def build_and_run(method, options = {})
+        body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
+        params = @options[:params].merge(options[:params] || {})
+        return wrapped_request.call(@options, uri, method, params, body)
       end
 
       def wrapped_request
@@ -125,12 +107,6 @@ module Grac
         end
 
         return caller
-      end
-
-      def build_and_run(method, options = {})
-        body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
-        params = @options[:params].merge(options[:params] || {})
-        return wrapped_request.call(@options, uri, method, params, body)
       end
 
       def check_response(method, response)
@@ -157,6 +133,31 @@ module Grac
           else
             raise Exception::ServiceError.new(method, response.effective_url, response.parsed_or_raw_body)
         end
+      end
+
+      def postprocessing(data, processing = nil)
+        return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
+
+        if data.kind_of?(Hash)
+          data.each do |key, value|
+            processing = nil
+            @options[:postprocessing].each do |regex, action|
+              if /#{regex}/ =~ key
+                processing = action
+              end
+            end
+
+            data[key] = postprocessing(value, processing)
+          end
+        elsif data.kind_of?(Array)
+          data.each_with_index do |value, index|
+            data[index] = postprocessing(value, processing)
+          end
+        else
+          data = processing.nil? ? data : processing.call(data)
+        end
+
+        return data
       end
   end
 end
