@@ -93,20 +93,20 @@ module Grac
     end
 
     def wrapped_request
-      caller = self
+      callee = self
 
       @options[:middleware].reverse.each do |mw|
         if mw.kind_of?(Array)
           middleware_class = mw[0]
           params           = mw[1..-1]
 
-          caller = middleware_class.new(caller, *params)
+          callee = middleware_class.new(callee, *params)
         else
-          caller = mw.new(caller)
+          callee = mw.new(callee)
         end
       end
 
-      return caller
+      return callee
     end
 
     def check_response(method, response)
