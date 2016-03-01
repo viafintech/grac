@@ -165,9 +165,9 @@ additional parameters. These will be passed along during the request when initia
 
 ```ruby
 class MW
-  def initialize(request, *params)
-    @request = request
-    @params  = params
+  def initialize(request, *settings)
+    @request  = request
+    @settings = settings
   end
 
   def call(opts, request_uri, method, params, body)
