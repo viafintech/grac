@@ -159,7 +159,7 @@ automatically with each request.
 For this purpose a class can be added as middleware which accepts at least one parameter during
 initialization and has a call method accepting the parameters as shown in the example below.
 The first parameter will always be the request object, i.e. the instance of `Grac` or another middleware
-already wrapper around it. Additional configuration can be provided to the middleware by accepting
+already wrapped around it. Additional configuration can be provided to the middleware by accepting
 additional parameters. These will be passed along during the request when initializing the middleware.
 
 
