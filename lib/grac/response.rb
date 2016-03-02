@@ -8,9 +8,13 @@ module Grac
     extend Forwardable
 
     def_delegator :@response, :body
+    def_delegator :@response, :code
+    def_delegator :@response, :effective_url
+    def_delegator :@response, :headers
+    def_delegator :@response, :return_message
 
     def initialize(typhoeus_response)
-      @response = typhoeus_response
+      @response    = typhoeus_response
     end
 
     def content_type

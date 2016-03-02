@@ -156,24 +156,47 @@ An example would be an `Authorization` header with a signature depending on host
 While this could be calculated before making the request it is just convenient to have it done
 automatically with each request.
 
-For this purpose `Proc`s/`lambda`s can be set on the Grac object following the example below:
+For this purpose a class can be added as middleware which accepts at least one parameter during
+initialization and has a call method accepting the parameters as shown in the example below.
+The first parameter will always be the request object, i.e. the instance of `Grac` or another middleware
+already wrapped around it. Additional configuration can be provided to the middleware by accepting
+additional parameters. These will be passed along during the request when initializing the middleware.
+
 
 ```ruby
-mw = lambda do |opts, request_uri, method, params, body|
-  # your code here
-  # opts        - Hash of the options currently set on the grac object
-  # request_uri - uri returned by grac
-  # method      - http method (lower case)
-  # params      - hash of all params for this request
-  # body        - serialized body
-  return opts, request_uri, method, params, body
+class MW
+  def initialize(request, *settings)
+    @request  = request
+    @settings = settings
+  end
+
+  def call(opts, request_uri, method, params, body)
+    # your code here
+    # opts        - Hash of the options currently set on the grac object
+    # request_uri - uri returned by grac
+    # method      - http method (lower case)
+    # params      - hash of all params for this request
+    # body        - serialized body
+
+    result = @request.call(opts, request_uri, method, params, body)
+
+    # your code for working on the response here
+    return result
+  end
 end
 
-Grac::Client.new("http://localhost:80", middleware: [mw])
+# Configuring Middleware
+Grac::Client.new("http://localhost:80", middleware: [MW])
+
+# Configuring Middleware with additional parameters
+Grac::Client.new("http://localhost:80", middleware: [[MW, "abc"]])
 ```
 
-Multiple middlewares can be added and they are executed in the order they were added.
+Multiple middlewares can be added and they are wrapped in the order they were added, the first one
+being the first one which is called and the last one to return in the middleware stack.
 The middlware can't modify the original parameters it receives (they're frozen), but it can return new values (or some of the original ones if it only needs to modify some of the parameters). The return values are then passed to the next middleware or, if the middleware is the last one, used for the actual request.
+The request will then return a `Grac::Response` object which can be used to execute some actions after
+the actual request. An example for this is checking a response signature.
 
 ### Response post processing
 
