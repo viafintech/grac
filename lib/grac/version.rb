@@ -1,3 +1,3 @@
 module Grac
-  VERSION = "2.1.0-propermiddleware"
+  VERSION = "2.2.0"
 end
