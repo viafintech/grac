@@ -326,7 +326,7 @@ describe Grac::Client do
     let(:method)            { "GET" }
     let(:response_code)     { 200 }
     let(:return_message)    { nil }
-    let(:response_headers)  { { 'Content-Type' => 'application/json?charset=utf-8' } }
+    let(:response_headers)  { { 'Content-Type' => 'application/json;charset=utf-8' } }
     let(:response_body)     { { "value" => "success" }.to_json }
     let(:typhoeus_response) { double('response', 'effective_url' => grac.uri,
                                      'code' => response_code, 'return_message' => return_message,
