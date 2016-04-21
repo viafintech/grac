@@ -17,7 +17,10 @@ module Grac
         :connecttimeout => options[:connecttimeout] || 0.1,
         :timeout        => options[:timeout]        || 15,
         :params         => options[:params]         || {},
-        :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" }.merge(options[:headers] || {}),
+        :headers        => {
+          "User-Agent"   => "Grac v#{Grac::VERSION}",
+          "Content-Type" => "application/json;charset=utf-8"
+        }.merge(options[:headers] || {}),
         :postprocessing => options[:postprocessing] || {},
         :middleware     => options[:middleware]     || []
       }

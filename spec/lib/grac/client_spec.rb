@@ -15,7 +15,10 @@ describe Grac::Client do
         :connecttimeout => 0.1,
         :timeout        => 15,
         :params         => {},
-        :headers        => { "User-Agent" => "Grac v#{Grac::VERSION}" },
+        :headers        => {
+          "User-Agent"   => "Grac v#{Grac::VERSION}",
+          "Content-Type" => "application/json;charset=utf-8"
+        },
         :postprocessing => {},
         :middleware    => []
       })
@@ -26,7 +29,7 @@ describe Grac::Client do
       :connecttimeout => 0.4,
       :timeout        => 10,
       :params         => { "abc" => "def" },
-      :headers        => { "User-Agent" => "Test" },
+      :headers        => { "User-Agent" => "Test", "Content-Type" => "something" },
       :postprocessing => { "amount" => ->(value){ BigDecimal.new(value.to_s) } }
     }.each do |param, value|
       it "allows setting the #{param}" do
@@ -35,10 +38,13 @@ describe Grac::Client do
       end
     end
 
-    it "keeps the user_agent header if it is not overwritten" do
+    it "keeps the user_agent header and content type if it is not overwritten" do
       client = described_class.new("http://localhost", :headers => { "Request-Id" => "123234234" })
-      check_options(client, :headers,
-        { "User-Agent" => "Grac v#{Grac::VERSION}", "Request-Id" => "123234234" })
+      check_options(client, :headers, {
+          "User-Agent" => "Grac v#{Grac::VERSION}",
+          "Content-Type" => "application/json;charset=utf-8",
+          "Request-Id" => "123234234"
+        })
     end
   end
 
@@ -54,7 +60,9 @@ describe Grac::Client do
       a_client = grac.set({ :headers => { "User-Agent" => "123445" } })
       b_client = a_client.set({ :headers => { "Request-Id" => "123445" } })
       check_options(b_client, :headers, {
-        "User-Agent" => "123445", "Request-Id" => "123445"
+        "User-Agent" => "123445",
+        "Content-Type" => "application/json;charset=utf-8",
+        "Request-Id" => "123445"
       })
     end
 
@@ -318,7 +326,7 @@ describe Grac::Client do
     let(:method)            { "GET" }
     let(:response_code)     { 200 }
     let(:return_message)    { nil }
-    let(:response_headers)  { { 'Content-Type' => 'application/json?encoding=utf-8' } }
+    let(:response_headers)  { { 'Content-Type' => 'application/json?charset=utf-8' } }
     let(:response_body)     { { "value" => "success" }.to_json }
     let(:typhoeus_response) { double('response', 'effective_url' => grac.uri,
                                      'code' => response_code, 'return_message' => return_message,
