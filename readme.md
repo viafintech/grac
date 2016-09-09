@@ -89,13 +89,23 @@ user = client.path("/v1/users").post(name: 'Hans', phone: '12345')
 
 This results in a request to `/v1/users` with the JSON request body `{"name": "Hans", "phone": "12345"}`.
 
-You can optionally pass query parameters:
+You can optionally pass **query parameters**:
 
 ```ruby
 client.path("/v1/users").get(page: '2')
 ```
 
 This results in a request to `/v1/users?page=2`.
+
+You can also provide **path parameters**:
+
+```ruby
+user = client.path("/v1/users/{id}", id: '34').get
+```
+
+This results in a request to `/v1/users/34`.
+
+Both, path and query parameters, are **escaped** using percent-encoding, if necessary. Nevertheless, if your application processes untrusted input, validate that input _before_ using it in your application and passing it to Grac. Escaping parameters is just a mitigation that can prevent URL injection under certain circumstances. Note that this mitigation can only work if you use Grac's parameter functionality, but _can not work_ if you build the URL string yourself.
 
 #### Available request methods
 
