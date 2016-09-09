@@ -1,3 +1,4 @@
+require 'cgi'
 require 'json'
 require 'typhoeus'
 require 'uri'
@@ -42,7 +43,7 @@ module Grac
 
     def path(path, variables = {})
       variables.each do |key, value|
-        path = path.gsub("{#{key}}", value)
+        path = path.gsub("{#{key}}", escape_url_param(value))
       end
       self.class.new("#{@uri}#{path}", @options)
     end
@@ -64,7 +65,7 @@ module Grac
     def call(opts, request_uri, method, params, body)
       request_hash = {
         :method         => method,
-        :params         => params,
+        :params         => params,  # Query params are escaped by Typhoeus
         :body           => body,
         :connecttimeout => opts[:connecttimeout],
         :timeout        => opts[:timeout],
@@ -161,6 +162,15 @@ module Grac
       end
 
       return data
+    end
+
+    def escape_url_param(value)
+      # We don't want spaces to be encoded as plus sign - a plus sign can be ambiguous in a URL and
+      # either represent a plus sign or a space.
+      # CGI::escape replaces all plus signs with their percent-encoding representation, so all
+      # remaining plus signs are spaces. Replacing these with a space's percent encoding makes the
+      # encoding unambiguous.
+      CGI::escape(value).gsub('+', '%20')
     end
   end
 end

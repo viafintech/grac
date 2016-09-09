@@ -80,6 +80,14 @@ describe Grac::Client do
       expect(client).to_not eq(grac)
       expect(client.uri).to eq("http://localhost:80/v2/transactions")
     end
+
+    it "escapes path parameters" do
+      # This also checks that spaces are replaced with %20, and _not_ with a plus sign `+`.
+      expect(grac.uri).to eq("http://localhost:80")
+      client = grac.path("/v2/transactions/{id}", id: '../../version# !')
+      expect(client).to_not eq(grac)
+      expect(client.uri).to eq('http://localhost:80/v2/transactions/..%2F..%2Fversion%23%20%21')
+    end
   end
 
   context "http methods" do
