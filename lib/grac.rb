@@ -1,2 +1,2 @@
-require 'grac/version'
-require 'grac/client'
+require_relative 'grac/version'
+require_relative 'grac/client'
