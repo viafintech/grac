@@ -82,4 +82,19 @@ describe Grac::Exception::ClientException do
       )
     end
   end
+
+  context "ErrorWithInvalidContent" do
+    it "has a custom message" do
+      exception = Grac::Exception::ErrorWithInvalidContent.new(
+        'put', 'http://example.com', 400, 'any body', 'json'
+      )
+      expect(exception.message).to eq(
+        "PUT 'http://example.com': Got HTTP 400, failed to parse as 'json'. Raw Body: 'any body'"
+      )
+      expect(exception.inspect).to eq(
+        "Grac::Exception::ErrorWithInvalidContent: PUT 'http://example.com': Got HTTP 400, " \
+        "failed to parse as 'json'. Raw Body: 'any body'"
+      )
+    end
+  end
 end

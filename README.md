@@ -126,11 +126,12 @@ When a **failure** occurs, one of these exceptions will be raised:
 * Status 404: `Grac::Exception::NotFound`
 * Status 409: `Grac::Exception::Conflict`
 * All other status codes: `ServiceError` - this includes all unknown status codes, even 3xx codes. See [issue #4](https://github.com/Barzahlen/grac/issues/4) for ideas on improving this.
-* `InvalidContent` - JSON Parsing failed, server response indicates success
+* `InvalidContent` - JSON parsing for a success status failed, server response indicates success.
+* `ErrorWithInvalidContent` - JSON parsing for an error status failed.
 * `RequestFailed` - The request failed, there's no response from the server.
     * `ServiceTimeout` - A subclass of `RequestFailed` - the request failed due to a timeout (like waiting for the connection or for the response).
 
-See [issue #1](https://github.com/Barzahlen/grac/issues/1) for support for more status codes.
+Responses with error status codes (4xx and 5xx) are expected to have JSON content, regardless of their content type (that's different for success responses). If they don't Grac raises a `ErrorWithInvalidContent` exception. This allows making the assumption when handling a `Grac::ClientException` that the exception's `#body` method contains a parsed JSON response.
 
 ### Chaining
 
