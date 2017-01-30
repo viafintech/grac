@@ -406,15 +406,16 @@ describe Grac::Client do
         end
       end
 
-      context "plain text" do
-        let(:response_headers) { { "Content-Type" => "text/plain" } }
+      context "HTML response" do
+        let(:response_body) { '<h1>Service unavailable<h1>' }
 
-        it "raises a BadRequest exception" do
+        it 'raises a ErrorWithInvalidContent exception' do
           expect{
             grac.send(:check_response, method, grac_response)
           }.to raise_exception(
-            Grac::Exception::BadRequest,
-            "GET '#{grac.uri}' failed with content: {\"value\":\"success\"}"
+            Grac::Exception::ErrorWithInvalidContent,
+            "GET '#{grac.uri}': Got HTTP 400, failed to parse as 'json'. " \
+            "Raw Body: '<h1>Service unavailable<h1>'"
           )
         end
       end

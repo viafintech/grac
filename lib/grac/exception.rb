@@ -70,5 +70,26 @@ module Grac
 
       alias_method :to_s, :message
     end
+
+    class ErrorWithInvalidContent < StandardError
+      def initialize(method, url, status, raw_body, expected_type)
+        @method = (method || "").upcase
+        @url = url
+        @status = status
+        @raw_body = raw_body
+        @expected_type = expected_type
+      end
+
+      def message
+        "#{@method} '#{@url}': Got HTTP #{@status}, failed to parse as '#{@expected_type}'. " \
+        "Raw Body: '#{@raw_body}'"
+      end
+
+      def inspect
+        "#{self.class.name}: #{message}"
+      end
+
+      alias_method :to_s, :message
+    end
   end
 end

@@ -126,16 +126,32 @@ module Grac
           return true
         when 0
           raise Exception::RequestFailed.new(method, response.effective_url, response.return_message)
-        when 400
-          raise Exception::BadRequest.new(method, response.effective_url, response.parsed_or_raw_body)
-        when 403
-          raise Exception::Forbidden.new(method, response.effective_url, response.parsed_or_raw_body)
-        when 404
-          raise Exception::NotFound.new(method, response.effective_url, response.parsed_or_raw_body)
-        when 409
-          raise Exception::Conflict.new(method, response.effective_url, response.parsed_or_raw_body)
         else
-          raise Exception::ServiceError.new(method, response.effective_url, response.parsed_or_raw_body)
+          begin
+            # The Response class doesn't have enough information to create a proper exception, so
+            # catch its exception and raise a proper one.
+            parsed_body = response.parsed_json
+          rescue Exception::InvalidContent
+            raise Exception::ErrorWithInvalidContent.new(
+              method,
+              response.effective_url,
+              response.code,
+              response.body,
+              'json'
+            )
+          end
+          case response.code
+          when 400
+            raise Exception::BadRequest.new(method, response.effective_url, parsed_body)
+          when 403
+            raise Exception::Forbidden.new(method, response.effective_url, parsed_body)
+          when 404
+            raise Exception::NotFound.new(method, response.effective_url, parsed_body)
+          when 409
+            raise Exception::Conflict.new(method, response.effective_url, parsed_body)
+          else
+            raise Exception::ServiceError.new(method, response.effective_url, parsed_body)
+          end
       end
     end
 
