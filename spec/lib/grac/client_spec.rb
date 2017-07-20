@@ -227,6 +227,22 @@ describe Grac::Client do
       end
     end
 
+    context "the response was only received partially" do
+      it "raises an exception if the response return_code is ':partial_file'" do
+        response = double('response', body: body, return_message: "msg")
+        expect(@request).to receive(:run).and_return(response)
+        expect(response).to receive(:timed_out?).twice.and_return(false)
+        expect(response).to receive(:return_code).and_return(:partial_file)
+
+        expect{
+          grac.call(opts, request_uri, method, params, body)
+        }.to raise_error(
+          ::Grac::Exception::PartialResponse,
+          "GET 'http://example.com' returned an incomplete response body: msg"
+        )
+      end
+    end
+
     context "success" do
       after do
         expect(@r.class).to eq(::Grac::Response)
@@ -236,6 +252,7 @@ describe Grac::Client do
       it "builds the request with the given parameters and executes it" do
         expect(@request).to receive(:run).and_return(response = double('response', body: body))
         expect(response).to receive(:timed_out?).twice.and_return(false)
+        expect(response).to receive(:return_code).and_return(:ok)
 
         @r = grac.call(opts, request_uri, method, params, body)
       end
@@ -243,6 +260,7 @@ describe Grac::Client do
       it "retries if the request timed_out in the beginning" do
         expect(@request).to receive(:run).twice.and_return(response = double('response', body: body))
         expect(response).to receive(:timed_out?).twice.and_return(true, false)
+        expect(response).to receive(:return_code).and_return(:ok)
 
         @r = grac.call(opts, request_uri, method, params, body)
       end
@@ -253,6 +271,7 @@ describe Grac::Client do
         it "does not retry if the http method is not get/head" do
           expect(@request).to receive(:run).and_return(response = double('response', body: body))
           expect(response).to receive(:timed_out?).twice.and_return(true, false)
+          expect(response).to receive(:return_code).and_return(:ok)
 
           @r = grac.call(opts, request_uri, method, params, body)
         end
@@ -279,6 +298,7 @@ describe Grac::Client do
       ).and_return(request = double('request'))
       expect(request).to receive(:run).and_return(response = double('response'))
       allow(response).to receive(:timed_out?).and_return(false)
+      allow(response).to receive(:return_code).and_return(:ok)
       response_object = caller.call({}, "http://example.com", "GET", {}, "")
       expect(response_object.class).to eq(::Grac::Response)
     end

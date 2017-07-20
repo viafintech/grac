@@ -50,7 +50,13 @@ module Grac
 
     class ServiceTimeout < RequestFailed
       def message
-         "#{@method} '#{@url}' timed out: #{@message}"
+        "#{@method} '#{@url}' timed out: #{@message}"
+      end
+    end
+
+    class PartialResponse < RequestFailed
+      def message
+        "#{@method} '#{@url}' returned an incomplete response body: #{@message}"
       end
     end
 

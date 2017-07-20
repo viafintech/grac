@@ -73,6 +73,15 @@ describe Grac::Exception::ClientException do
     end
   end
 
+  context "PartialResponse" do
+    it "does not parse the body" do
+      exception = Grac::Exception::PartialResponse.new('put', 'http://example.com', 'something<>')
+      expect(exception.message).to eq(
+        "PUT 'http://example.com' returned an incomplete response body: something<>"
+      )
+    end
+  end
+
   context "InvalidContent" do
     it "has a custom message" do
       exception = Grac::Exception::InvalidContent.new('any body', 'json')

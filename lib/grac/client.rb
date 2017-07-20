@@ -85,6 +85,19 @@ module Grac
         raise Exception::ServiceTimeout.new(method, request.url, response.return_message)
       end
 
+      # List of possible codes
+      # https://github.com/typhoeus/ethon/blob/ab052b6a317309b6ae8be7b538738b138b11437a/lib/ethon/curls/codes.rb#L10
+      case response.return_code
+      # A request may have received a response but may have aborted while receiving the data.
+      # Typhoeus does not necessarily consider this a timeout but might try to parse a response.
+      # If the response content length does not match the content length header,
+      # the return code will be :partial_file.
+      # In that case we do not want to pass it on as it would result in JSON Parser errors
+      # due to invalid JSON from the incomplete response.
+      when :partial_file
+        raise Exception::PartialResponse.new(method, request.url, response.return_message)
+      end
+
       return Response.new(response)
     end
 
