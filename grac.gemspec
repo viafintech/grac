@@ -19,12 +19,10 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_development_dependency "rake",                    "~> 10.4.1"
-  spec.add_development_dependency "rspec",                   "~> 3.2.0"
-  spec.add_development_dependency "builder",                 "~> 3.2.2" # Needed for ci-reporter
-  spec.add_development_dependency "rspec_junit_formatter",   "~> 0.2.2"
-  spec.add_development_dependency "rack-test",               "~> 0.6.3"
-  spec.add_development_dependency "typhoeus",                "~> 0.6.9"
+  spec.add_development_dependency "rake",                    "~> 12.3"
+  spec.add_development_dependency "rspec",                   "~> 3.7"
+  spec.add_development_dependency "builder",                 "~> 3.2"
+  spec.add_development_dependency "rack-test",               "~> 0.7"
 
-  spec.add_runtime_dependency "typhoeus",                    "~> 0.6.9"
+  spec.add_runtime_dependency "typhoeus",                    "~> 1"
 end
