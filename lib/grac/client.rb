@@ -175,7 +175,9 @@ module Grac
         data.each do |key, value|
           processing = nil
           @options[:postprocessing].each do |regex, action|
-            if /#{regex}/ =~ key
+            pattern = Regexp.new(regex).freeze
+
+            if pattern =~ key
               processing = action
             end
           end
