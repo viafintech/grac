@@ -29,6 +29,9 @@ module Grac
       [:params, :headers, :postprocessing, :middleware].each do |k|
         @options[k].freeze
       end
+      @patterns = @options[:postprocessing].keys.collect do |regex|
+        Regexp.new(regex).freeze
+      end
       @uri.freeze
     end
 
@@ -172,16 +175,14 @@ module Grac
       return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
       if data.kind_of?(Hash)
-        data.each do |key, value|
+        data.keys.reverse.each do |key|
           processing = nil
-          @options[:postprocessing].each do |regex, action|
-            pattern = Regexp.new(regex).freeze
+          action = @patterns.detect { |pattern| pattern =~ key }
 
-            if pattern =~ key
-              processing = action
-            end
+          if !action.nil?
+            processing = @options[:postprocessing][action.source]
           end
-
+          value = data[key]
           data[key] = postprocessing(value, processing)
         end
       elsif data.kind_of?(Array)
