@@ -34,6 +34,11 @@ describe Grac::Client do
     }.each do |param, value|
       it "allows setting the #{param}" do
         client = described_class.new("http://localhost:80", param => value)
+
+        if param == :postprocessing
+          (value, key) = *(value).flatten
+          value = Hash[Regexp.new(value), key]
+        end
         check_options(client, param, value)
       end
     end

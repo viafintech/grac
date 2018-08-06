@@ -25,13 +25,24 @@ module Grac
         :postprocessing => options[:postprocessing] || {},
         :middleware     => options[:middleware]     || []
       }
-      @options.freeze
+
+      if options[:postprocessing]
+        options[:postprocessing]
+          .each_with_object(patterns = { postprocessing: {} }) do |(key, value), obj|
+          if !key.kind_of?(Regexp)
+            obj[:postprocessing][Regexp.new(key)] = value
+          end
+        end
+        options.merge!(patterns)
+
+        options[:postprocessing].delete_if { |key, value| !key.kind_of?(Regexp) }
+        @options[:postprocessing] = options[:postprocessing]
+      end
+
       [:params, :headers, :postprocessing, :middleware].each do |k|
         @options[k].freeze
       end
-      @patterns = @options[:postprocessing].keys.collect do |regex|
-        Regexp.new(regex).freeze
-      end
+
       @uri.freeze
     end
 
@@ -174,15 +185,15 @@ module Grac
     def postprocessing(data, processing = nil)
       return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
+      patterns = @options[:postprocessing].keys
       if data.kind_of?(Hash)
-        data.keys.reverse.each do |key|
+        data.each do |key, value|
           processing = nil
-          action = @patterns.detect { |pattern| pattern =~ key }
+          regexp = patterns.detect { |pattern| pattern =~ key }
 
-          if !action.nil?
-            processing = @options[:postprocessing][action.source]
+          if !regexp.nil?
+            processing = @options[:postprocessing][regexp]
           end
-          value = data[key]
           data[key] = postprocessing(value, processing)
         end
       elsif data.kind_of?(Array)
