@@ -22,22 +22,24 @@ module Grac
           "User-Agent"   => "Grac v#{Grac::VERSION}",
           "Content-Type" => "application/json;charset=utf-8"
         }.merge(options[:headers] || {}),
-        :postprocessing => options[:postprocessing] || {},
+        :postprocessing => {},
         :middleware     => options[:middleware]     || []
       }
 
       if options[:postprocessing]
         options[:postprocessing]
-          .each_with_object(patterns = { postprocessing: {} }) do |(key, value), obj|
-          if !key.kind_of?(Regexp)
-            obj[:postprocessing][Regexp.new(key)] = value
+          .each_with_object(postprocessing = {}) do |(pattern, transformation), obj|
+          if pattern.kind_of?(Regexp)
+            obj[pattern] = transformation
+          else
+            obj[Regexp.new(pattern)] = transformation
           end
         end
-        options.merge!(patterns)
 
-        options[:postprocessing].delete_if { |key, value| !key.kind_of?(Regexp) }
-        @options[:postprocessing] = options[:postprocessing]
+        @options[:postprocessing] = postprocessing
       end
+
+      @options.freeze
 
       [:params, :headers, :postprocessing, :middleware].each do |k|
         @options[k].freeze
@@ -185,11 +187,10 @@ module Grac
     def postprocessing(data, processing = nil)
       return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
-      patterns = @options[:postprocessing].keys
       if data.kind_of?(Hash)
         data.each do |key, value|
           processing = nil
-          regexp = patterns.detect { |pattern| pattern =~ key }
+          regexp = @options[:postprocessing].keys.detect { |pattern| pattern =~ key }
 
           if !regexp.nil?
             processing = @options[:postprocessing][regexp]
