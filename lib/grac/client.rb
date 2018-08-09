@@ -22,13 +22,29 @@ module Grac
           "User-Agent"   => "Grac v#{Grac::VERSION}",
           "Content-Type" => "application/json;charset=utf-8"
         }.merge(options[:headers] || {}),
-        :postprocessing => options[:postprocessing] || {},
+        :postprocessing => {},
         :middleware     => options[:middleware]     || []
       }
+
+      if options[:postprocessing]
+        options[:postprocessing]
+          .each_with_object(postprocessing = {}) do |(pattern, transformation), obj|
+          if pattern.kind_of?(Regexp)
+            obj[pattern] = transformation
+          else
+            obj[Regexp.new(pattern)] = transformation
+          end
+        end
+
+        @options[:postprocessing] = postprocessing
+      end
+
       @options.freeze
+
       [:params, :headers, :postprocessing, :middleware].each do |k|
         @options[k].freeze
       end
+
       @uri.freeze
     end
 
@@ -174,14 +190,11 @@ module Grac
       if data.kind_of?(Hash)
         data.each do |key, value|
           processing = nil
-          @options[:postprocessing].each do |regex, action|
-            pattern = Regexp.new(regex).freeze
+          regexp = @options[:postprocessing].keys.detect { |pattern| pattern =~ key }
 
-            if pattern =~ key
-              processing = action
-            end
+          if !regexp.nil?
+            processing = @options[:postprocessing][regexp]
           end
-
           data[key] = postprocessing(value, processing)
         end
       elsif data.kind_of?(Array)
