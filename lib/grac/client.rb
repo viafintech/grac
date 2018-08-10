@@ -22,13 +22,29 @@ module Grac
           "User-Agent"   => "Grac v#{Grac::VERSION}",
           "Content-Type" => "application/json;charset=utf-8"
         }.merge(options[:headers] || {}),
-        :postprocessing => options[:postprocessing] || {},
+        :postprocessing => {},
         :middleware     => options[:middleware]     || []
       }
+
+      if options[:postprocessing]
+        options[:postprocessing]
+          .each_with_object(postprocessing = {}) do |(pattern, transformation), obj|
+          if pattern.kind_of?(Regexp)
+            obj[pattern] = transformation
+          else
+            obj[Regexp.new(pattern)] = transformation
+          end
+        end
+
+        @options[:postprocessing] = postprocessing
+      end
+
       @options.freeze
+
       [:params, :headers, :postprocessing, :middleware].each do |k|
         @options[k].freeze
       end
+
       @uri.freeze
     end
 
@@ -174,12 +190,11 @@ module Grac
       if data.kind_of?(Hash)
         data.each do |key, value|
           processing = nil
-          @options[:postprocessing].each do |regex, action|
-            if /#{regex}/ =~ key
-              processing = action
-            end
-          end
+          regexp = @options[:postprocessing].keys.detect { |pattern| pattern =~ key }
 
+          if !regexp.nil?
+            processing = @options[:postprocessing][regexp]
+          end
           data[key] = postprocessing(value, processing)
         end
       elsif data.kind_of?(Array)
@@ -197,7 +212,7 @@ module Grac
       # We don't want spaces to be encoded as plus sign - a plus sign can be ambiguous in a URL and
       # either represent a plus sign or a space.
       # CGI::escape replaces all plus signs with their percent-encoding representation, so all
-      # remaining plus signs are spaces. Replacing these with a space's percent encoding makes the
+      # remaining plus signs are spaces. Replacing these with a space's percent encoding makes the
       # encoding unambiguous.
       CGI::escape(value).gsub('+', '%20')
     end
