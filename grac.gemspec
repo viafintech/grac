@@ -24,7 +24,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "builder",                 "~> 3.2.2" # Needed for ci-reporter
   spec.add_development_dependency "rspec_junit_formatter",   "~> 0.2.2"
   spec.add_development_dependency "rack-test",               "~> 0.6.3"
-  spec.add_development_dependency "typhoeus",                "~> 0.6.9"
 
-  spec.add_runtime_dependency "typhoeus",                    "~> 0.6.9"
+  spec.add_dependency "typhoeus", "~> 0.6.9"
 end
