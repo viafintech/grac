@@ -1,6 +1,5 @@
-require 'json'
+require 'oj'
 require 'forwardable'
-
 require_relative './exception'
 
 module Grac
@@ -26,8 +25,8 @@ module Grac
     end
 
     def parsed_json
-      JSON.parse(body)
-    rescue JSON::ParserError
+      Oj.load(body)
+    rescue Oj::ParseError, EncodingError
       raise Exception::InvalidContent.new(body, 'json')
     end
 
