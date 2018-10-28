@@ -1,18 +1,10 @@
-## 3.2.0
+## 2.5.0
 
-* Improve JSON parsing performance by using [oj](https://github.com/ohler55/oj) gem instead of the builtin `json` library
+* Backport changes from v3.2.0: JSON parse performance
 
-## 3.1.1
+## 2.4.1
 
-* Further improvement on regexp object creation to reduce memory allocation
-
-## 3.1.0
-
-* Improvement on regexp object creation to reduce memory allocation
-
-## 3.0.0
-
-* Updates gem dependencies with breaking dependency resolution changes
+* Backport changes from v3.1.1: postprocessing performance
 
 ## 2.4.0
 
