@@ -1,3 +1,7 @@
+## 3.2.0
+
+* Improve JSON parsing performance by using [oj](https://github.com/ohler55/oj) gem instead of the builtin `json` library
+
 ## 3.1.1
 
 * Further improvement on regexp object creation to reduce memory allocation
