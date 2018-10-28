@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_development_dependency "rake",          "~> 12.3"
-  spec.add_development_dependency "rspec",         "~> 3.7"
+  spec.add_development_dependency "rspec",         "~> 3.8"
   spec.add_development_dependency "builder",       "~> 3.2"
   spec.add_development_dependency "benchmark-ips", "~> 2.7"
   spec.add_development_dependency "rack-test",     "~> 0.7"
