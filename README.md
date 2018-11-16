@@ -221,7 +221,7 @@ Here's an example with a regular expression matching all property names ending i
 client = Grac::Client.new(
   "http://localhost:80",
   postprocessing: {
-    "amount$" => ->(value){ BigDecimal.new(value.to_s) }
+    "amount$" => ->(value){ BigDecimal(value.to_s) }
   }
 )
 ```

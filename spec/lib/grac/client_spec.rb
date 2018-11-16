@@ -30,7 +30,7 @@ describe Grac::Client do
       :timeout        => 10,
       :params         => { "abc" => "def" },
       :headers        => { "User-Agent" => "Test", "Content-Type" => "something" },
-      :postprocessing => { "amount" => ->(value){ BigDecimal.new(value.to_s) } }
+      :postprocessing => { "amount" => ->(value){ BigDecimal(value.to_s) } }
     }.each do |param, value|
       it "allows setting the #{param}" do
         client = described_class.new("http://localhost:80", param => value)
@@ -130,19 +130,19 @@ describe Grac::Client do
 
     it "automatically converts a field" do
       data = { "amount" => "123.12", "something_else" => "value" }
-      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal(value) } })
       expect(client.send(:postprocessing, data)).to eq({
-        "amount"         => BigDecimal.new("123.12"),
+        "amount"         => BigDecimal("123.12"),
         "something_else" => "value"
       })
     end
 
     it "automatically converts a value in a nested hash field" do
       data = { "nested" => { "amount" => "123.12" }, "something_else" => "value" }
-      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal(value) } })
       expect(client.send(:postprocessing, data)).to eq({
         "nested" => {
-          "amount" => BigDecimal.new("123.12"),
+          "amount" => BigDecimal("123.12"),
         },
         "something_else" => "value"
       })
@@ -150,10 +150,10 @@ describe Grac::Client do
 
     it "automatically converts a value in a nested array field" do
       data = { "nested" => [{ "amount" => "123.12" }], "something_else" => "value" }
-      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal(value) } })
       expect(client.send(:postprocessing, data)).to eq({
         "nested" => [{
-          "amount" => BigDecimal.new("123.12"),
+          "amount" => BigDecimal("123.12"),
         }],
         "something_else" => "value"
       })
@@ -161,16 +161,16 @@ describe Grac::Client do
 
     it "automatically converts field values if all of them are in an array" do
       data = { "amount" => ["123.12", "154.23"], "something_else" => "value" }
-      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal(value) } })
       expect(client.send(:postprocessing, data)).to eq({
-        "amount" => [BigDecimal.new("123.12"), BigDecimal.new("154.23")],
+        "amount" => [BigDecimal("123.12"), BigDecimal("154.23")],
         "something_else" => "value"
       })
     end
 
     it "does not convert if the value of key is a nested hash" do
       data = { "amount" => { "nested" => "123.12" }, "something_else" => "value" }
-      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal.new(value) } })
+      client = grac.set(:postprocessing => { 'amount$' => ->(value){ BigDecimal(value) } })
       expect(client.send(:postprocessing, data)).to eq({
         "amount" => {
           "nested" => "123.12",
