@@ -320,38 +320,109 @@ describe Grac::Client do
   end
 
   context "#build_and_run" do
-    it "builds the parameters and passes them to the middleware_chain" do
-      expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
-      expect(middleware_stack).to receive(:call).with(
-        grac.instance_variable_get(:@options), grac.uri, "get", {}, nil
-      ).and_return(1)
-      expect(grac.send(:build_and_run, "get", {})).to eq(1)
+    context 'middleware_chain' do
+      it "builds the parameters and passes them to the middleware_chain" do
+        expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
+        expect(middleware_stack).to receive(:call).with(
+          grac.instance_variable_get(:@options), grac.uri, "get", {}, nil
+        ).and_return(1)
+        expect(grac.send(:build_and_run, "get", {})).to eq(1)
+      end
+
+      it "calls the middleware_chain with a body" do
+        expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
+        expect(middleware_stack).to receive(:call).with(
+          grac.instance_variable_get(:@options), grac.uri, "get", {}, { data: "asd" }.to_json
+        ).and_return(1)
+        expect(grac.send(:build_and_run, "get", { :body => { data: "asd" } })).to eq(1)
+      end
+
+      it "calls the middleware_chain with a params" do
+        expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
+        expect(middleware_stack).to receive(:call).with(
+          grac.instance_variable_get(:@options), grac.uri, "get", { data: "asd" }, nil
+        ).and_return(1)
+        expect(grac.send(:build_and_run, "get", { :params => { data: "asd" } })).to eq(1)
+      end
+
+      it "calls the middleware_chain with predefined parameters" do
+        client = grac.set(params: { "a" => "b" })
+
+        expect(client).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
+        expect(middleware_stack).to receive(:call).with(
+          client.instance_variable_get(:@options), client.uri, "get", { "a" => "b", "c" => "b" }, nil
+        ).and_return(1)
+        expect(client.send(:build_and_run, "get", { :params => { "c" => "b" } })).to eq(1)
+      end
     end
 
-    it "calls the middleware_chain with a body" do
-      expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
-      expect(middleware_stack).to receive(:call).with(
-        grac.instance_variable_get(:@options), grac.uri, "get", {}, { data: "asd" }.to_json
-      ).and_return(1)
-      expect(grac.send(:build_and_run, "get", { :body => { data: "asd" } })).to eq(1)
-    end
+    context 'prepare_body_by_content_type' do
+      let(:body) do
+        { 'a' => 'b', 'c' => 'b' }
+      end
 
-    it "calls the middleware_chain with a params" do
-      expect(grac).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
-      expect(middleware_stack).to receive(:call).with(
-        grac.instance_variable_get(:@options), grac.uri, "get", { data: "asd" }, nil
-      ).and_return(1)
-      expect(grac.send(:build_and_run, "get", { :params => { data: "asd" } })).to eq(1)
-    end
+      let(:client) do
+        grac.set(headers: { 'Content-Type' => content_type })
+      end
 
-    it "calls the middleware_chain with predefined parameters" do
-      client = grac.set(params: { "a" => "b" })
+      let(:client_call) do
+        client.send(:build_and_run, 'post', { body: body })
+      end
 
-      expect(client).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
-      expect(middleware_stack).to receive(:call).with(
-        client.instance_variable_get(:@options), client.uri, "get", { "a" => "b", "c" => "b" }, nil
-      ).and_return(1)
-      expect(client.send(:build_and_run, "get", { :params => { "c" => "b" } })).to eq(1)
+      let(:prepared_body) do
+        body.to_json
+      end
+
+      before do
+        expect(client).to receive(:middleware_chain).and_return(middleware_stack = double('mw'))
+        expect(middleware_stack)
+          .to receive(:call)
+          .with(
+            client.instance_variable_get(:@options),
+            client.uri,
+            'post',
+            {},
+            prepared_body
+          ).and_return(1)
+      end
+
+      context 'when the content type is application/json' do
+        let(:content_type) do
+          'application/json;charset=utf-8'
+        end
+
+        it 'encodes the body as json' do
+          expect(client_call).to eq(1)
+        end
+      end
+
+      context 'when the content type is application/x-www-form-urlencoded' do
+        let(:content_type) do
+          'application/x-www-form-urlencoded'
+        end
+
+        let(:prepared_body) do
+          body
+        end
+
+        it 'does not specifically encode the body' do
+          expect(client_call).to eq(1)
+        end
+      end
+
+      context 'default' do
+        let(:content_type) do
+          'application/unknown'
+        end
+
+        let(:prepared_body) do
+          body
+        end
+
+        it 'encodes the body as json' do
+          expect(client_call).to eq(1)
+        end
+      end
     end
   end
 
