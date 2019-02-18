@@ -1,3 +1,7 @@
+## 3.3.0
+
+* Encode request bodies based on the configured request `Content-Type`
+
 ## 3.2.0
 
 * Improve JSON parsing performance by using [oj](https://github.com/ohler55/oj) gem instead of the builtin `json` library

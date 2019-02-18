@@ -120,9 +120,29 @@ module Grac
     private
 
     def build_and_run(method, options = {})
-      body   = options[:body].nil? || options[:body].empty? ? nil : options[:body].to_json
+      body   = prepare_body_by_content_type(options[:body])
       params = @options[:params].merge(options[:params] || {})
       return middleware_chain.call(@options, uri, method, params, body)
+    end
+
+    def headers
+      @options[:headers] || {}
+    end
+
+    def prepare_body_by_content_type(body)
+      return nil if body.nil? || body.empty?
+
+      case headers['Content-Type']
+      when /\Aapplication\/json/
+        return body.to_json
+      when /\Aapplication\/x-www-form-urlencoded/
+        # Typhoeus will take care of the encoding when receiving a hash
+        return body
+      else
+        # Do not encode other unknown Content-Types either.
+        # The default is JSON through the Content-Type header which is set by default.
+        return body
+      end
     end
 
     def middleware_chain

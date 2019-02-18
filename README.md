@@ -115,6 +115,13 @@ Both, path and query parameters, are **escaped** using percent-encoding, if nece
 * `put(request_body, query_params)`
 * `patch(request_body, query_params)`
 
+#### Body encoding
+
+`POST`, `PUT`, and `PATCH` allow passing a request body.
+The request body will be automatically encoded based on the configured `Content-Type` request header.
+The default for this header is set to `application/json;charset=utf-8`, which results in request bodies being encoded as JSON by default.
+The `Content-Type` `application/x-www-form-urlencoded` is also specifically handled. `grac` will not encode the body and instead relies on the default behaviour provided by `Typhoeus`. Other unhandled `Content-Type`s will result in the same behaviour, allowing to use `grac` also for use cases that do not require JSON bodies.
+
 #### Responses
 
 For most **success** status codes (`2xx`, except `204` and `205`), Grac tries to parse the response as JSON if the response Content-Type contains `application/json`. For other content types, Grac returns the response as String and doesn't attempt to parse it. For a `204` or `205` response, the return value is undefined (it's currently `true`, but this might change in the future).
