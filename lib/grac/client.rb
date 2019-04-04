@@ -210,7 +210,7 @@ module Grac
       if data.kind_of?(Hash)
         data.each do |key, value|
           processing = nil
-          regexp = @options[:postprocessing].keys.detect { |pattern| pattern =~ key }
+          regexp = @options[:postprocessing].keys.detect { |pattern| pattern.match?(key) }
 
           if !regexp.nil?
             processing = @options[:postprocessing][regexp]
