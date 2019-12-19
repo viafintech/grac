@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec",         "~> 3.8"
   spec.add_development_dependency "builder",       "~> 3.2"
   spec.add_development_dependency "benchmark-ips", "~> 2.7"
-  spec.add_development_dependency "rack",          "~> 1.6.11"
+  spec.add_development_dependency "rack",          "~> 2.0.8"
   spec.add_development_dependency "rack-test",     "~> 0.6.3"
 
   spec.add_runtime_dependency "oj",                "~> 3.6.13"
