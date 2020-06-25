@@ -1,3 +1,12 @@
+## 4.0.1
+
+* Update rack development dependency due to CVE
+
+## 4.0.0
+
+* Utilize `Regexp.match?` for postprocessing field checks
+* Require ruby version 2.4
+
 ## 3.3.0
 
 * Encode request bodies based on the configured request `Content-Type`
