@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.name          = "grac"
   spec.version       = Grac::VERSION
   spec.authors       = ["Tobias Schoknecht"]
-  spec.email         = ["tobias.schoknecht@barzahlen.de"]
+  spec.email         = ["tobias.schoknecht@viafintech.com"]
   spec.description   = %q{Generic REST API Client}
   spec.summary       = %q{Very generic client for REST API with basic error handling}
   spec.homepage      = "https://github.com/Barzahlen/grac"
