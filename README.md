@@ -1,6 +1,6 @@
 # Grac
 
-[![Travis Build state](https://api.travis-ci.org/Barzahlen/grac.svg)](https://travis-ci.org/Barzahlen/grac) [![Code Climate](https://codeclimate.com/github/Barzahlen/grac/badges/gpa.svg)](https://codeclimate.com/github/Barzahlen/grac) [![RubyDoc](https://img.shields.io/badge/ruby-doc-green.svg)](http://rubydoc.info/github/Barzahlen/grac)
+![Build Status](https://github.com/viafintech/grac/actions/workflows/test.yml/badge.svg) [![Code Climate](https://codeclimate.com/github/Barzahlen/grac/badges/gpa.svg)](https://codeclimate.com/github/Barzahlen/grac) [![RubyDoc](https://img.shields.io/badge/ruby-doc-green.svg)](http://rubydoc.info/github/Barzahlen/grac)
 
 Grac is a generic REST client for JSON APIs. It's based on [Typhoeus](https://github.com/typhoeus/typhoeus), so it uses [libcurl](http://curl.haxx.se/) to execute requests.
 
