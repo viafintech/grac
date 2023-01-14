@@ -1,3 +1,12 @@
+## 4.2.0
+
+* Bump ruby required version from 2.6 to 2.7
+* Update test matrix to include ruby 3.2
+
+## 4.1.0
+
+* Updated dependencies
+
 ## 4.0.1
 
 * Update rack development dependency due to CVE
