@@ -14,7 +14,7 @@ Loading GeoIP information for `github.com`:
 require 'grac'
 # => true
 geoip_client = Grac::Client.new('http://freegeoip.net/json', timeout: 5)
-# => #<Grac::Client:0x000000037f0848 @uri="http://freegeoip.net/json", @options={:connecttimeout=>0.1, :timeout=>15, :params=>{}, :headers=>{"User-Agent"=>"Grac v2.X.X","Content-Type"=>"application/json;charset=utf-8"}, :postprocessing=>{}}>
+# => #<Grac::Client:0x000000037f0848 @uri="http://freegeoip.net/json", @options={:connecttimeout=>0.1, :timeout=>15, :params=>{}, :headers=>{"User-Agent"=>"Grac v4.X.X","Content-Type"=>"application/json;charset=utf-8"}, :postprocessing=>{}, :retry_get_head=>true}>
 geoip_client.path('/{host}', host: 'github.com').get
 # => {"ip"=>"8.8.8.8", "country_code"=>"US", "country_name"=>"United States", "region_code"=>"CA", "region_name"=>"California", "city"=>"Mountain View", "zip_code"=>"94040", "time_zone"=>"America/Los_Angeles", "latitude"=>37.3845, "longitude"=>-122.0881, "metro_code"=>807}
 ```
@@ -33,7 +33,7 @@ geoip_client.path('/does/not/exist').get
 
 ```ruby
 client = geoip_client.set(postprocessing: { '\A(latitude|longitude)\z' => -> (v) { v.to_i } })
-#  => #<Grac::Client:0x00000003d06378 @uri="http://freegeoip.net/json", @options={:connecttimeout=>0.1, :timeout=>5, :params=>{}, :headers=>{"User-Agent"=>"Grac v2.X.X","Content-Type"=>"application/json;charset=utf-8"}, :postprocessing=>{"\\A(latitude|longitude)\\z"=>#<Proc:0x00000003d06530@(irb):18 (lambda)>}}>
+#  => #<Grac::Client:0x00000003d06378 @uri="http://freegeoip.net/json", @options={:connecttimeout=>0.1, :timeout=>5, :params=>{}, :headers=>{"User-Agent"=>"Grac v4.X.X","Content-Type"=>"application/json;charset=utf-8"}, :postprocessing=>{"\\A(latitude|longitude)\\z"=>#<Proc:0x00000003d06530@(irb):18 (lambda)>}, :retry_get_head=>true}>
 client.path('/github.com').get
 # => {"ip"=>"192.30.252.128", "country_code"=>"US", "country_name"=>"United States", "region_code"=>"CA", "region_name"=>"California", "city"=>"San Francisco", "zip_code"=>"94107", "time_zone"=>"America/Los_Angeles", "latitude"=>37, "longitude"=>-122, "metro_code"=>807}
 ```
@@ -64,9 +64,10 @@ Available options (shown are the default values):
   connecttimeout: 0.1,  # in seconds
   timeout:        15,   # in seconds
   params:         {},   # default query parameters to be attached to the URL
-  headers:        { "User-Agent" => "Grac v2.X.X", "Content-Type" => "application/json;charset=utf-8" },
+  headers:        { "User-Agent" => "Grac v4.X.X", "Content-Type" => "application/json;charset=utf-8" },
   postprocessing: {},   # see below
-  middleware:     []    # see below
+  middleware:     [],   # see below
+  retry_get_head: true, # retrying get and head requests on timeout once
 }
 ```
 
@@ -146,7 +147,7 @@ Grac allows you to override options and append to the URI by chaining calls to `
 
 ```ruby
 client = Grac::Client.new("http://localhost:80", timeout: 1)
-# => #<Grac::Client:0x00000003d3dd50 @uri="http://localhost:80", @options={:connecttimeout=>0.1, :timeout=>1, :params=>{}, :headers=>{"User-Agent"=>"Grac v2.X.X","Content-Type"=>"application/json;charset=utf-8"}, :postprocessing=>{}}>
+# => #<Grac::Client:0x00000003d3dd50 @uri="http://localhost:80", @options={:connecttimeout=>0.1, :timeout=>1, :params=>{}, :headers=>{"User-Agent"=>"Grac v4.X.X","Content-Type"=>"application/json;charset=utf-8"}, :postprocessing=>{}, :retry_get_head=>true}>
 client.set(timeout: 20).path("/v1/users").get(per_page: 1000)
 # => [...]
 ```

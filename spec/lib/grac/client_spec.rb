@@ -2,38 +2,49 @@ require 'spec_helper'
 require 'bigdecimal'
 
 describe Grac::Client do
-  let(:grac) { described_class.new("http://localhost:80") }
+  let(:grac) do
+    described_class.new(
+      'http://localhost:80',
+      options,
+    )
+  end
+
+  let(:options) do
+    {}
+  end
 
   def check_options(client, field, value)
     expect(client.instance_variable_get("@options")[field]).to eq(value)
   end
 
   context "#initialize" do
-    it "initializes the client with default values" do
+    it 'initializes the client with default values' do
       client = described_class.new("http://localhost:80")
       expect(client.instance_variable_get("@options")).to eq({
-        :connecttimeout => 0.1,
-        :timeout        => 15,
-        :params         => {},
-        :headers        => {
-          "User-Agent"   => "Grac v#{Grac::VERSION}",
-          "Content-Type" => "application/json;charset=utf-8"
+        connecttimeout: 0.1,
+        timeout:        15,
+        params:         {},
+        headers:        {
+          'User-Agent'   => "Grac v#{Grac::VERSION}",
+          'Content-Type' => 'application/json;charset=utf-8',
         },
-        :postprocessing => {},
-        :middleware    => []
+        postprocessing: {},
+        middleware:     [],
+        retry_get_head: true,
       })
-      expect(client.uri).to eq("http://localhost:80")
+      expect(client.uri).to eq('http://localhost:80')
     end
 
     {
-      :connecttimeout => 0.4,
-      :timeout        => 10,
-      :params         => { "abc" => "def" },
-      :headers        => { "User-Agent" => "Test", "Content-Type" => "something" },
-      :postprocessing => { "amount" => ->(value){ BigDecimal(value.to_s) } }
+      connecttimeout: 0.4,
+      timeout:        10,
+      params:         { 'abc' => 'def' },
+      headers:        { 'User-Agent' => 'Test', 'Content-Type' => 'something' },
+      postprocessing: { 'amount' => -> (value) { BigDecimal(value.to_s) } },
+      retry_get_head: false,
     }.each do |param, value|
       it "allows setting the #{param}" do
-        client = described_class.new("http://localhost:80", param => value)
+        client = described_class.new('http://localhost:80', param => value)
 
         if param == :postprocessing
           (value, key) = *(value).flatten
@@ -204,16 +215,46 @@ describe Grac::Client do
         .and_return(@request = double('request', url: request_uri))
     end
 
-    context "the request timed out" do
+    context 'when the request timed out' do
+      context 'when the client is configured to not retry' do
+        let(:options) do
+          {
+            retry_get_head: false,
+          }
+        end
+
+        it 'raises an exception if the retry was not successful either' do
+          expect(@request)
+            .to receive(:run)
+                  .and_return(
+                    response = double('response', body: body, return_message: 'msg'),
+                  )
+          expect(response).to receive(:timed_out?).twice.and_return(true)
+
+          expect {
+            grac.call(opts, request_uri, method, params, body)
+          }.to raise_error(
+                 ::Grac::Exception::ServiceTimeout,
+                 "GET 'http://example.com' timed out: msg",
+               )
+        end
+      end
+
       it "raises an exception if the retry was not successful either" do
-        expect(@request).to receive(:run).twice.and_return(
-          response = double('response', body: body, return_message: "msg")
-        )
+        expect(@request)
+          .to receive(:run)
+                .twice
+                .and_return(
+                  response = double('response', body: body, return_message: 'msg'),
+                )
         expect(response).to receive(:timed_out?).twice.and_return(true)
 
-        expect{
+        expect {
           grac.call(opts, request_uri, method, params, body)
-        }.to raise_error(::Grac::Exception::ServiceTimeout, "GET 'http://example.com' timed out: msg")
+        }.to raise_error(
+               ::Grac::Exception::ServiceTimeout,
+               "GET 'http://example.com' timed out: msg",
+             )
       end
 
       context "post" do
