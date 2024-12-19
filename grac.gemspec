@@ -23,8 +23,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rspec',         '~> 3.12'
   spec.add_development_dependency 'builder',       '~> 3.2'
   spec.add_development_dependency 'benchmark-ips', '~> 2.10'
-  spec.add_development_dependency 'rack',          '~> 3.0.1'
-  spec.add_development_dependency 'rack-test',     '~> 2.0.2'
+  spec.add_development_dependency 'rack',          '~> 3.1'
+  spec.add_development_dependency 'rack-test',     '~> 2.1'
 
   spec.add_runtime_dependency 'oj',                '~> 3.13.23'
   spec.add_runtime_dependency 'typhoeus',          '~> 1'
