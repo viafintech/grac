@@ -1,3 +1,7 @@
+## 4.3.0
+
+* Add support for disabling retries on timeout for `GET` and `HEAD` requests
+
 ## 4.2.0
 
 * Bump ruby required version from 2.6 to 2.7
