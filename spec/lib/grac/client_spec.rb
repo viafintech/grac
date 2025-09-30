@@ -538,7 +538,7 @@ describe Grac::Client do
             grac.send(:check_response, method, grac_response)
           }.to raise_exception(
             Grac::Exception::BadRequest,
-            "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+            "GET '#{grac.uri}' failed with content: {\"value\" => \"success\"}"
           )
         end
       end
@@ -566,7 +566,7 @@ describe Grac::Client do
           grac.send(:check_response, method, grac_response)
         }.to raise_exception(
           Grac::Exception::Forbidden,
-          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+          "GET '#{grac.uri}' failed with content: {\"value\" => \"success\"}"
         )
       end
     end
@@ -579,7 +579,7 @@ describe Grac::Client do
           grac.send(:check_response, method, grac_response)
         }.to raise_exception(
           Grac::Exception::NotFound,
-          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+          "GET '#{grac.uri}' failed with content: {\"value\" => \"success\"}"
         )
       end
     end
@@ -592,7 +592,7 @@ describe Grac::Client do
           grac.send(:check_response, method, grac_response)
         }.to raise_exception(
           Grac::Exception::Conflict,
-          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+          "GET '#{grac.uri}' failed with content: {\"value\" => \"success\"}"
         )
       end
     end
@@ -605,7 +605,7 @@ describe Grac::Client do
           grac.send(:check_response, method, grac_response)
         }.to raise_exception(
           Grac::Exception::ServiceError,
-          "GET '#{grac.uri}' failed with content: {\"value\"=>\"success\"}"
+          "GET '#{grac.uri}' failed with content: {\"value\" => \"success\"}"
         )
       end
     end
