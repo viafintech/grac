@@ -68,6 +68,8 @@ Available options (shown are the default values):
   postprocessing: {},   # see below
   middleware:     [],   # see below
   retry_get_head: true, # retrying get and head requests on timeout once
+  proxy:          nil,  # see below
+  ssl:            nil,  # see below
 }
 ```
 
@@ -255,6 +257,77 @@ Into this Ruby Hash:
 **Note:**
 Postprocessing recursively runs through all of the data.
 This may have significant influence on performance depending on size and depth of the result.
+
+### Proxy Configuration
+
+Grac supports routing requests through a proxy server. Configure the proxy using the `proxy` option:
+
+```ruby
+client = Grac::Client.new(
+  "http://localhost:80",
+  proxy: {
+    url:      "http://proxy.example.com:8080",
+    username: "user",
+    password: "secret"
+  }
+)
+```
+
+Available proxy options:
+
+| Option | Description |
+|--------|-------------|
+| `url` | The proxy server URL |
+| `username` | Username for proxy authentication |
+| `password` | Password for proxy authentication |
+
+Proxy options are deep-merged when using `set`, allowing you to override individual settings:
+
+```ruby
+client_with_auth = client.set(proxy: { username: "other_user" })
+```
+
+### SSL Configuration
+
+Grac supports configuring SSL/TLS settings for HTTPS connections. Configure SSL using the `ssl` option:
+
+```ruby
+client = Grac::Client.new(
+  "https://api.example.com",
+  ssl: {
+    verify_peer: true,
+    verify_host: 2,
+    cert:        "/path/to/client.crt",
+    key:         "/path/to/client.key",
+    ca_info:     "/path/to/ca-bundle.crt"
+  }
+)
+```
+
+Available SSL options:
+
+| Option | Description |
+|--------|-------------|
+| `verify_peer` | Whether to verify the peer's SSL certificate (boolean) |
+| `verify_host` | Level of hostname verification (0 = disabled, 2 = enabled) |
+| `cert` | Path to the client certificate file |
+| `key` | Path to the client private key file |
+| `ca_info` | Path to a CA certificate bundle file |
+
+To disable SSL verification (not recommended for production):
+
+```ruby
+client = Grac::Client.new(
+  "https://api.example.com",
+  ssl: { verify_peer: false, verify_host: 0 }
+)
+```
+
+SSL options are deep-merged when using `set`, allowing you to override individual settings:
+
+```ruby
+client_with_cert = client.set(ssl: { cert: "/path/to/other.crt" })
+```
 
 ## Limitations
 

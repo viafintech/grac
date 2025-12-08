@@ -31,6 +31,8 @@ describe Grac::Client do
         postprocessing: {},
         middleware:     [],
         retry_get_head: true,
+        proxy:          nil,
+        ssl:            nil,
       })
       expect(client.uri).to eq('http://localhost:80')
     end
@@ -62,6 +64,18 @@ describe Grac::Client do
           "Request-Id" => "123234234"
         })
     end
+
+    it "allows setting proxy options" do
+      proxy_opts = { url: "http://proxy:8080", username: "user", password: "secret" }
+      client = described_class.new("http://localhost", proxy: proxy_opts)
+      check_options(client, :proxy, proxy_opts)
+    end
+
+    it "allows setting ssl options" do
+      ssl_opts = { verify_peer: true, verify_host: 2, cert: "/path/to/cert.pem" }
+      client = described_class.new("http://localhost", ssl: ssl_opts)
+      check_options(client, :ssl, ssl_opts)
+    end
   end
 
   context "#set" do
@@ -86,6 +100,18 @@ describe Grac::Client do
       a_client = grac.set({ :middleware => ["abc"] })
       b_client = a_client.set({ :middleware => ["cde"] })
       check_options(b_client, :middleware, ["abc", "cde"])
+    end
+
+    it "merges proxy options instead of overwriting them" do
+      a_client = grac.set({ proxy: { url: "http://proxy:8080" } })
+      b_client = a_client.set({ proxy: { username: "user" } })
+      check_options(b_client, :proxy, { url: "http://proxy:8080", username: "user" })
+    end
+
+    it "merges ssl options instead of overwriting them" do
+      a_client = grac.set({ ssl: { verify_peer: true } })
+      b_client = a_client.set({ ssl: { verify_host: 2 } })
+      check_options(b_client, :ssl, { verify_peer: true, verify_host: 2 })
     end
   end
 
@@ -322,6 +348,97 @@ describe Grac::Client do
           @r = grac.call(opts, request_uri, method, params, body)
         end
       end
+    end
+
+  end
+
+  context "#call with proxy options" do
+    let(:method)      { "get" }
+    let(:params)      { { "param1" => "value" } }
+    let(:body)        { "body" }
+    let(:request_uri) { "http://example.com" }
+
+    let(:opts) do
+      {
+        connecttimeout: 1,
+        timeout: 3,
+        headers: { "User-Agent" => "test" },
+        proxy: { url: "http://proxy:8080", username: "user", password: "secret" }
+      }
+    end
+
+    let(:request_hash) do
+      {
+        method:         method,
+        params:         params,
+        body:           body,
+        connecttimeout: opts[:connecttimeout],
+        timeout:        opts[:timeout],
+        headers:        opts[:headers],
+        proxy:          "http://proxy:8080",
+        proxyusername:  "user",
+        proxypassword:  "secret"
+      }
+    end
+
+    it "passes proxy options to Typhoeus" do
+      expect(::Typhoeus::Request).to receive(:new)
+        .with(request_uri, request_hash)
+        .and_return(request = double('request', url: request_uri))
+      expect(request).to receive(:run).and_return(response = double('response', body: body))
+      expect(response).to receive(:timed_out?).twice.and_return(false)
+      expect(response).to receive(:return_code).and_return(:ok)
+
+      grac.call(opts, request_uri, method, params, body)
+    end
+  end
+
+  context "#call with ssl options" do
+    let(:method)      { "get" }
+    let(:params)      { { "param1" => "value" } }
+    let(:body)        { "body" }
+    let(:request_uri) { "http://example.com" }
+
+    let(:opts) do
+      {
+        connecttimeout: 1,
+        timeout: 3,
+        headers: { "User-Agent" => "test" },
+        ssl: {
+          verify_peer: false,
+          verify_host: 0,
+          cert: "/path/to/cert.pem",
+          key: "/path/to/key.pem",
+          ca_info: "/path/to/ca.pem"
+        }
+      }
+    end
+
+    let(:request_hash) do
+      {
+        method:         method,
+        params:         params,
+        body:           body,
+        connecttimeout: opts[:connecttimeout],
+        timeout:        opts[:timeout],
+        headers:        opts[:headers],
+        ssl_verifypeer: false,
+        ssl_verifyhost: 0,
+        sslcert:        "/path/to/cert.pem",
+        sslkey:         "/path/to/key.pem",
+        cainfo:         "/path/to/ca.pem"
+      }
+    end
+
+    it "passes ssl options to Typhoeus" do
+      expect(::Typhoeus::Request).to receive(:new)
+        .with(request_uri, request_hash)
+        .and_return(request = double('request', url: request_uri))
+      expect(request).to receive(:run).and_return(response = double('response', body: body))
+      expect(response).to receive(:timed_out?).twice.and_return(false)
+      expect(response).to receive(:return_code).and_return(:ok)
+
+      grac.call(opts, request_uri, method, params, body)
     end
   end
 

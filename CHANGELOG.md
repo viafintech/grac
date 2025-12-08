@@ -1,3 +1,7 @@
+## 4.4.0
+
+Add support for `proxy` and `ssl` options in the Grac client configuration
+
 ## 4.3.1
 
 * Bump rack dependency
