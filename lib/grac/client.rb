@@ -21,11 +21,13 @@ module Grac
         params:         options[:params]         || {},
         headers:        {
           'User-Agent'   => "Grac v#{Grac::VERSION}",
-          'Content-Type' => 'application/json;charset=utf-8'
+          'Content-Type' => 'application/json;charset=utf-8',
         }.merge(options[:headers] || {}),
         postprocessing: {},
         middleware:     options[:middleware] || [],
         retry_get_head: options.fetch(:retry_get_head, true),
+        proxy:          options[:proxy],
+        ssl:            options[:ssl],
       }
 
       if options[:postprocessing]
@@ -43,8 +45,8 @@ module Grac
 
       @options.freeze
 
-      [:params, :headers, :postprocessing, :middleware].each do |k|
-        @options[k].freeze
+      [:params, :headers, :postprocessing, :middleware, :proxy, :ssl].each do |k|
+        @options[k]&.freeze
       end
 
       @uri.freeze
@@ -55,6 +57,8 @@ module Grac
                   {
                     headers:    @options[:headers].merge(options[:headers]    || {}),
                     middleware: @options[:middleware] + (options[:middleware] || []),
+                    proxy:      merge_option_hash(options, :proxy),
+                    ssl:        merge_option_hash(options, :ssl),
                   },
                 )
 
@@ -85,12 +89,14 @@ module Grac
     def call(opts, request_uri, method, params, body)
       request_hash = {
         method:         method,
-        params:         params,  # Query params are escaped by Typhoeus
+        params:         params, # Query params are escaped by Typhoeus
         body:           body,
         connecttimeout: opts[:connecttimeout],
         timeout:        opts[:timeout],
         headers:        opts[:headers],
       }
+      apply_proxy_options(request_hash, opts[:proxy])
+      apply_ssl_options(request_hash, opts[:ssl])
 
       request  = ::Typhoeus::Request.new(request_uri, request_hash)
       response = request.run
@@ -242,6 +248,35 @@ module Grac
         # remaining plus signs are spaces. Replacing these with a space's percent encoding makes the
         # encoding unambiguous.
         CGI::escape(value).gsub('+', '%20')
+      end
+
+      def merge_option_hash(options, key)
+        existing = @options[key] || {}
+        new_val  = options[key]
+
+        return existing if new_val == nil
+
+        existing.merge(new_val)
+      end
+
+      # map proxy options from our format to typhoeus format
+      def apply_proxy_options(request_hash, proxy)
+        return if proxy == nil
+
+        request_hash[:proxy]         = proxy[:url]      if proxy[:url] != nil
+        request_hash[:proxyusername] = proxy[:username] if proxy[:username] != nil
+        request_hash[:proxypassword] = proxy[:password] if proxy[:password] != nil
+      end
+
+      # map ssl options from our format to typhoeus format
+      def apply_ssl_options(request_hash, ssl)
+        return if ssl == nil
+
+        request_hash[:ssl_verifypeer] = ssl[:verify_peer] if ssl[:verify_peer] != nil
+        request_hash[:ssl_verifyhost] = ssl[:verify_host] if ssl[:verify_host] != nil
+        request_hash[:sslcert]        = ssl[:cert]        if ssl[:cert] != nil
+        request_hash[:sslkey]         = ssl[:key]         if ssl[:key] != nil
+        request_hash[:cainfo]         = ssl[:ca_info]     if ssl[:ca_info] != nil
       end
 
   end
