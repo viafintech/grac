@@ -1,3 +1,7 @@
+## 4.4.1
+
+Add `logger` as runtime dependency for Ruby 4 support
+
 ## 4.4.0
 
 Add support for `proxy` and `ssl` options in the Grac client configuration
