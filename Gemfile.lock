@@ -1,7 +1,8 @@
 PATH
   remote: .
   specs:
-    grac (4.4.0)
+    grac (4.4.1)
+      logger
       oj (~> 3.16)
       typhoeus (~> 1)
 
@@ -15,6 +16,7 @@ GEM
     ethon (0.15.0)
       ffi (>= 1.15.0)
     ffi (1.17.2)
+    logger (1.7.0)
     oj (3.16.11)
       bigdecimal (>= 3.0)
       ostruct (>= 0.2)
@@ -52,4 +54,4 @@ DEPENDENCIES
   rspec (~> 3.12)
 
 BUNDLED WITH
-   2.4.2
+   2.7.1
