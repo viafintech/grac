@@ -478,6 +478,27 @@ describe Grac::Client do
 
       grac.call(opts, request_uri, method, params, body)
     end
+
+    context "when Content-Type includes a boundary parameter" do
+      let(:opts) do
+        {
+          connecttimeout: 1,
+          timeout: 3,
+          headers: { "User-Agent" => "test", "Content-Type" => "multipart/form-data; boundary=----abc123" }
+        }
+      end
+
+      it "still sets multipart flag and removes Content-Type header" do
+        expect(::Typhoeus::Request).to receive(:new)
+          .with(request_uri, request_hash)
+          .and_return(request = double('request', url: request_uri))
+        expect(request).to receive(:run).and_return(response = double('response', body: body))
+        expect(response).to receive(:timed_out?).twice.and_return(false)
+        expect(response).to receive(:return_code).and_return(:ok)
+
+        grac.call(opts, request_uri, method, params, body)
+      end
+    end
   end
 
   context "#call with non-multipart content type" do
