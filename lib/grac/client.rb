@@ -292,7 +292,7 @@ module Grac
         # Typhoeus does not expect a Content-Type header for multipart requests.
         # It sets the correct one itself including the boundary.
         # Therefore we need to remove the Content-Type header from the request.
-        request_hash[:headers] = headers.reject { |k, _| k.downcase == 'content-type' }
+        request_hash[:headers] = headers.reject { |k, _| k == 'Content-Type' }
       end
 
   end
