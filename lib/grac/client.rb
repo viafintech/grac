@@ -97,6 +97,7 @@ module Grac
       }
       apply_proxy_options(request_hash, opts[:proxy])
       apply_ssl_options(request_hash, opts[:ssl])
+      apply_multipart_handling(request_hash, opts[:headers])
 
       request  = ::Typhoeus::Request.new(request_uri, request_hash)
       response = request.run
@@ -151,6 +152,9 @@ module Grac
         when /\Aapplication\/x-www-form-urlencoded/
           # Typhoeus will take care of the encoding when receiving a hash
           return body
+        when /\Amultipart\/form-data/
+          # Typhoeus will take care of the encoding when receiving a hash
+          return body
         else
           # Do not encode other unknown Content-Types either.
           # The default is JSON through the Content-Type header which is set by default.
@@ -162,7 +166,7 @@ module Grac
         callee = self
 
         @options[:middleware].reverse.each do |mw|
-          if mw.kind_of?(Array)
+          if mw.is_a?(Array)
             middleware_class = mw[0]
             params           = mw[1..-1]
 
@@ -220,17 +224,17 @@ module Grac
       def postprocessing(data, processing = nil)
         return data if @options[:postprocessing].nil? || @options[:postprocessing].empty?
 
-        if data.kind_of?(Hash)
+        if data.is_a?(Hash)
           data.each do |key, value|
             processing = nil
             regexp = @options[:postprocessing].keys.detect { |pattern| pattern.match?(key) }
 
-            if !regexp.nil?
+            if regexp != nil
               processing = @options[:postprocessing][regexp]
             end
             data[key] = postprocessing(value, processing)
           end
-        elsif data.kind_of?(Array)
+        elsif data.is_a?(Array)
           data.each_with_index do |value, index|
             data[index] = postprocessing(value, processing)
           end
@@ -277,6 +281,18 @@ module Grac
         request_hash[:sslcert]        = ssl[:cert]        if ssl[:cert] != nil
         request_hash[:sslkey]         = ssl[:key]         if ssl[:key] != nil
         request_hash[:cainfo]         = ssl[:ca_info]     if ssl[:ca_info] != nil
+      end
+
+      def apply_multipart_handling(request_hash, headers)
+        return if headers == nil
+        return if !headers['Content-Type']
+        return if !headers['Content-Type'].include?('multipart/form-data')
+
+        request_hash[:multipart] = true
+        # Typhoeus does not expect a Content-Type header for multipart requests.
+        # It sets the correct one itself including the boundary.
+        # Therefore we need to remove the Content-Type header from the request.
+        request_hash[:headers] = headers.reject { |k, _| k.downcase == 'content-type' }
       end
 
   end

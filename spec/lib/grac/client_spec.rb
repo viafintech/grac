@@ -442,6 +442,81 @@ describe Grac::Client do
     end
   end
 
+  context "#call with multipart content type" do
+    let(:method)      { "post" }
+    let(:params)      { { "param1" => "value" } }
+    let(:body)        { { "file" => "file_data", "name" => "test" } }
+    let(:request_uri) { "http://example.com" }
+
+    let(:opts) do
+      {
+        connecttimeout: 1,
+        timeout: 3,
+        headers: { "User-Agent" => "test", "Content-Type" => "multipart/form-data" }
+      }
+    end
+
+    let(:request_hash) do
+      {
+        method:         method,
+        params:         params,
+        body:           body,
+        connecttimeout: opts[:connecttimeout],
+        timeout:        opts[:timeout],
+        headers:        { "User-Agent" => "test" },
+        multipart:      true
+      }
+    end
+
+    it "sets multipart flag and removes Content-Type header" do
+      expect(::Typhoeus::Request).to receive(:new)
+        .with(request_uri, request_hash)
+        .and_return(request = double('request', url: request_uri))
+      expect(request).to receive(:run).and_return(response = double('response', body: body))
+      expect(response).to receive(:timed_out?).twice.and_return(false)
+      expect(response).to receive(:return_code).and_return(:ok)
+
+      grac.call(opts, request_uri, method, params, body)
+    end
+  end
+
+  context "#call with non-multipart content type" do
+    let(:method)      { "post" }
+    let(:params)      { { "param1" => "value" } }
+    let(:body)        { "body" }
+    let(:request_uri) { "http://example.com" }
+
+    let(:opts) do
+      {
+        connecttimeout: 1,
+        timeout: 3,
+        headers: { "User-Agent" => "test", "Content-Type" => "application/json" }
+      }
+    end
+
+    let(:request_hash) do
+      {
+        method:         method,
+        params:         params,
+        body:           body,
+        connecttimeout: opts[:connecttimeout],
+        timeout:        opts[:timeout],
+        headers:        opts[:headers]
+      }
+    end
+
+    it "does not set multipart flag or modify headers" do
+      expect(::Typhoeus::Request).to receive(:new)
+        .with(request_uri, request_hash)
+        .and_return(request = double('request', url: request_uri))
+      expect(request).to receive(:run).and_return(response = double('response', body: body))
+      expect(response).to receive(:timed_out?).twice.and_return(false)
+      expect(response).to receive(:return_code).and_return(:ok)
+
+      grac.call(opts, request_uri, method, params, body)
+    end
+  end
+
   context "middleware_chain" do
     after do
       caller = @client.send(:middleware_chain)
@@ -557,6 +632,20 @@ describe Grac::Client do
       context 'when the content type is application/x-www-form-urlencoded' do
         let(:content_type) do
           'application/x-www-form-urlencoded'
+        end
+
+        let(:prepared_body) do
+          body
+        end
+
+        it 'does not specifically encode the body' do
+          expect(client_call).to eq(1)
+        end
+      end
+
+      context 'when the content type is multipart/form-data' do
+        let(:content_type) do
+          'multipart/form-data'
         end
 
         let(:prepared_body) do

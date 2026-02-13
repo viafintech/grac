@@ -329,6 +329,33 @@ SSL options are deep-merged when using `set`, allowing you to override individua
 client_with_cert = client.set(ssl: { cert: "/path/to/other.crt" })
 ```
 
+### Multipart Form Data / File Uploads
+
+Grac supports uploading files via multipart form data. Set the `Content-Type` header to `multipart/form-data` and pass the file as the request body. Grac will automatically configure Typhoeus for multipart handling, including setting the correct `Content-Type` header with the multipart boundary.
+
+```ruby
+client = Grac::Client.new(
+  "http://localhost:80",
+  headers: { "Content-Type" => "multipart/form-data" }
+)
+
+client.path("/v1/documents").post(
+  file: File.open("/path/to/document.pdf", "rb"),
+  description: "My document"
+)
+```
+
+You can also set the `Content-Type` on a per-request basis using `set`:
+
+```ruby
+client = Grac::Client.new("http://localhost:80")
+
+client
+  .set(headers: { "Content-Type" => "multipart/form-data" })
+  .path("/v1/documents")
+  .post(file: File.open("/path/to/document.pdf", "rb"), description: "My document")
+```
+
 ## Limitations
 
 * 3xx status codes (i.e. redirects) are not yet supported.
