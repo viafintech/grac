@@ -331,7 +331,7 @@ client_with_cert = client.set(ssl: { cert: "/path/to/other.crt" })
 
 ### Multipart Form Data / File Uploads
 
-Grac supports uploading files via multipart form data. Set the `Content-Type` header to `multipart/form-data` and pass the file as the request body. Grac will automatically configure Typhoeus for multipart handling, including setting the correct `Content-Type` header with the multipart boundary.
+Grac supports uploading files via multipart form data. Set the `Content-Type` header to `multipart/form-data` and pass a hash of multipart form fields as the request body, with the file IO as one of the values (for example, `file:` plus any additional fields like `description:`). Grac will automatically configure Typhoeus for multipart handling, including setting the correct `Content-Type` header with the multipart boundary.
 
 ```ruby
 client = Grac::Client.new(
@@ -339,10 +339,12 @@ client = Grac::Client.new(
   headers: { "Content-Type" => "multipart/form-data" }
 )
 
-client.path("/v1/documents").post(
-  file: File.open("/path/to/document.pdf", "rb"),
-  description: "My document"
-)
+File.open("/path/to/document.pdf", "rb") do |file|
+  client.path("/v1/documents").post(
+    file: file,
+    description: "My document"
+  )
+end
 ```
 
 You can also set the `Content-Type` on a per-request basis using `set`:
@@ -350,10 +352,12 @@ You can also set the `Content-Type` on a per-request basis using `set`:
 ```ruby
 client = Grac::Client.new("http://localhost:80")
 
-client
-  .set(headers: { "Content-Type" => "multipart/form-data" })
-  .path("/v1/documents")
-  .post(file: File.open("/path/to/document.pdf", "rb"), description: "My document")
+File.open("/path/to/document.pdf", "rb") do |file|
+  client
+    .set(headers: { "Content-Type" => "multipart/form-data" })
+    .path("/v1/documents")
+    .post(file: file, description: "My document")
+end
 ```
 
 ## Limitations
