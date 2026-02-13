@@ -1,3 +1,7 @@
+## 4.5.0
+
+Add support for file uploads via multipart form data in the Grac client configuration
+
 ## 4.4.1
 
 Add `logger` as runtime dependency for Ruby 4 support
