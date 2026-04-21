@@ -61,6 +61,8 @@ module Grac
     end
 
     class InvalidContent < StandardError
+      attr_reader :body
+
       def initialize(body, type)
         @body = body
         @type = type
@@ -78,6 +80,8 @@ module Grac
     end
 
     class ErrorWithInvalidContent < StandardError
+      attr_reader :raw_body
+
       def initialize(method, url, status, raw_body, expected_type)
         @method = (method || "").upcase
         @url = url
