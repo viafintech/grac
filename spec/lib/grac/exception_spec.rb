@@ -89,6 +89,7 @@ describe Grac::Exception::ClientException do
       expect(exception.inspect).to eq(
         "Grac::Exception::InvalidContent: Failed to parse body as 'json': 'any body'"
       )
+      expect(exception.body).to eq('any body')
     end
   end
 
@@ -104,6 +105,7 @@ describe Grac::Exception::ClientException do
         "Grac::Exception::ErrorWithInvalidContent: PUT 'http://example.com': Got HTTP 400, " \
         "failed to parse as 'json'. Raw Body: 'any body'"
       )
+      expect(exception.raw_body).to eq('any body')
     end
   end
 end
