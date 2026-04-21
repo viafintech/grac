@@ -1,3 +1,7 @@
+## 4.6.0
+
+Add attr_reader for 'InvalidContent' and 'ErrorWithInvalidContent' exceptions to allow access to the response body for more dedicated error handling
+
 ## 4.5.0
 
 Add support for file uploads via multipart form data in the Grac client configuration
