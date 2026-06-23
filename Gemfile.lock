@@ -10,14 +10,14 @@ GEM
   remote: https://rubygems.org/
   specs:
     benchmark-ips (2.14.0)
-    bigdecimal (3.2.3)
+    bigdecimal (4.1.2)
     builder (3.3.0)
     diff-lcs (1.6.2)
     ethon (0.15.0)
       ffi (>= 1.15.0)
     ffi (1.17.2)
     logger (1.7.0)
-    oj (3.16.11)
+    oj (3.17.3)
       bigdecimal (>= 3.0)
       ostruct (>= 0.2)
     ostruct (0.6.3)
